@@ -82,6 +82,12 @@ export default function PrintPatchTable({ groups }: Props) {
                   const overlapKey = `${(g.universe || '').toUpperCase()}:${g.startingAddress}`
                   const overlaps = overlappingStarts.has(overlapKey)
 
+                  const lastValidStart = 512 - g.mode.channelCount + 1
+                  const invalidAfterIdx = Math.max(
+                    0,
+                    Math.ceil((lastValidStart + 1 - g.startingAddress) / g.mode.channelCount)
+                  )
+
                   return (
                     <tr key={g.id} className="border-b border-gray-300">
                       <td title="Pieces" className="border border-gray-400 px-3 py-2 whitespace-nowrap">{g.amount}</td>
@@ -108,7 +114,7 @@ export default function PrintPatchTable({ groups }: Props) {
                           <span
                             key={idx}
                             className={
-                              a > 512
+                              idx >= invalidAfterIdx
                                 ? 'text-red-700 font-bold'
                                 : overlaps
                                   ? 'text-orange-800 font-semibold'

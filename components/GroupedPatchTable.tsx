@@ -279,6 +279,17 @@ export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupCh
                       { length: g.amount },
                       (_, i) => g.startingAddress + i * g.mode.channelCount
                     )
+
+                    // For invalid highlighting, only mark those fixture start addresses whose used range exceeds 512.
+                    // A fixture with channelCount N starting at S uses [S, S+N-1]. Invalid when S+N-1 > 512 => S > 512-N+1.
+                    const lastValidStart = 512 - g.mode.channelCount + 1
+
+                    // Find the first index whose start address is invalid.
+                    const invalidAfterIdx = Math.max(
+                      0,
+                      Math.ceil((lastValidStart + 1 - g.startingAddress) / g.mode.channelCount)
+                    )
+
                     const idEnd = g.startingId + g.amount - 1
                     const idRange = g.amount > 1 ? `${g.startingId} – ${idEnd}` : `${g.startingId}`
                     const overlapKey = `${(g.universe || '').toUpperCase()}:${g.startingAddress}`
@@ -312,7 +323,7 @@ export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupCh
                                 <span
                                   key={idx}
                                   className={
-                                    a > 512
+                                    idx >= invalidAfterIdx
                                       ? 'text-red-700 font-bold'
                                       : overlaps
                                         ? 'text-orange-800 font-semibold'
