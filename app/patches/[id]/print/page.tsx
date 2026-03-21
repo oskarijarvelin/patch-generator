@@ -16,7 +16,7 @@ export default async function PrintPage({ params }: { params: Promise<{ id?: str
   const dateStr = new Date(patch.updatedAt).toLocaleDateString('fi-FI')
 
   return (
-    <div className="max-w-4xl mx-auto px-8 py-10 bg-white min-h-screen print:px-0 print:py-0">
+    <div className="max-w-4xl mx-auto px-8 py-10 bg-white min-h-screen print:max-w-none print:w-full print:mx-0 print:px-0 print:py-0">
       {/* Top header: date left, designer info right */}
       <div className="flex justify-between items-start mb-8 text-sm">
         <div className="text-gray-500">Updated {dateStr}</div>

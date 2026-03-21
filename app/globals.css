@@ -19,3 +19,32 @@ a[x-apple-data-detectors] {
   color: inherit !important;
   text-decoration: none !important;
 }
+
+@media print {
+  /* Avoid 1px / 1% horizontal scrollbars when printing */
+  html,
+  body {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+  }
+
+  th,
+  td {
+    max-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}

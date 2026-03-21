@@ -32,7 +32,7 @@ export default function PrintPatchTable({ groups }: Props) {
 
   return (
     <div className="w-full">
-      <table className="w-full border-collapse text-sm">
+      <table className="w-full border-collapse text-sm table-fixed">
         <colgroup>
           <col className="w-[6%]" />
           <col className="w-[6%]" />
@@ -100,7 +100,7 @@ export default function PrintPatchTable({ groups }: Props) {
                         title="Addresses"
                         colSpan={2}
                         className={
-                          `border border-gray-400 px-3 py-2 font-mono text-xs ` +
+                          `border border-gray-400 px-3 py-2 font-mono text-xs whitespace-normal break-words ` +
                           (overlaps ? 'bg-orange-50' : '')
                         }
                       >

@@ -47,9 +47,10 @@ export default function GroupForm({ fixtures, patchId, onGroupAdded }: Props) {
       const usedEnd = getLastUsedAddress(g.startingAddress, g.mode.channelCount, g.amount)
       last = Math.max(last, usedEnd)
     }
+
     const candidate = last + 1
     if (candidate < 1) return 1
-    if (candidate > 512) return 512
+    if (candidate > 512) return null
     return candidate
   }, [existingGroups, universe])
 
@@ -138,6 +139,8 @@ export default function GroupForm({ fixtures, patchId, onGroupAdded }: Props) {
     }
   }
 
+  const detailsEnabled = Boolean(fixtureId && modeId)
+
   return (
     <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
       <h3 className="font-semibold text-gray-800 mb-3">Add Group</h3>
@@ -147,35 +150,6 @@ export default function GroupForm({ fixtures, patchId, onGroupAdded }: Props) {
         </div>
       )}
       <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-3">
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Position</label>
-            <input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="e.g. SR" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Universe</label>
-            <select
-              aria-label="Universe"
-              value={universe}
-              onChange={(e) => setUniverse(e.target.value)}
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-            >
-              {UNIVERSES.map((u) => <option key={u}>{u}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Start ID</label>
-            <input type="number" value={startingId} onChange={(e) => setStartingId(e.target.value)} min="1" placeholder="1" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Start Addr <span className="text-gray-400">(next free: {firstFreeAddress})</span></label>
-            <input type="number" value={startingAddress} onChange={(e) => setStartingAddress(e.target.value)} min="1" max="512" placeholder="1" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Amount</label>
-            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} min="1" placeholder="1" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
-          </div>
-        </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
           <div>
             <label className="block text-xs text-gray-600 mb-1">Manufacturer</label>
@@ -207,7 +181,79 @@ export default function GroupForm({ fixtures, patchId, onGroupAdded }: Props) {
             />
           </div>
         </div>
-        <button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded text-sm font-medium">
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-3">
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Position</label>
+            <input
+              value={position}
+              onChange={(e) => setPosition(e.target.value)}
+              placeholder="e.g. SR"
+              required
+              disabled={!detailsEnabled}
+              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm disabled:bg-gray-100 disabled:text-gray-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Universe</label>
+            <select
+              aria-label="Universe"
+              value={universe}
+              onChange={(e) => setUniverse(e.target.value)}
+              disabled={!detailsEnabled}
+              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm disabled:bg-gray-100 disabled:text-gray-500"
+            >
+              {UNIVERSES.map((u) => <option key={u}>{u}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Start ID</label>
+            <input
+              type="number"
+              value={startingId}
+              onChange={(e) => setStartingId(e.target.value)}
+              min="1"
+              placeholder="1"
+              required
+              disabled={!detailsEnabled}
+              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm disabled:bg-gray-100 disabled:text-gray-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">
+              Start Addr{' '}
+              <span className="text-gray-400">
+                (next free: {firstFreeAddress ?? '—'})
+              </span>
+            </label>
+            <input
+              type="number"
+              value={startingAddress}
+              onChange={(e) => setStartingAddress(e.target.value)}
+              min="1"
+              max="512"
+              placeholder="1"
+              required
+              disabled={!detailsEnabled}
+              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm disabled:bg-gray-100 disabled:text-gray-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Amount</label>
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              min="1"
+              placeholder="1"
+              required
+              disabled={!detailsEnabled}
+              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm disabled:bg-gray-100 disabled:text-gray-500"
+            />
+          </div>
+        </div>
+
+        <button type="submit" disabled={saving || !detailsEnabled} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded text-sm font-medium">
           {saving ? 'Adding…' : 'Add Group'}
         </button>
       </form>
