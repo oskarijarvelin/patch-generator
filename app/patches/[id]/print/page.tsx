@@ -1,27 +1,10 @@
-import { headers } from 'next/headers'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
-import PatchTable from '@/components/PatchTable'
-import PatchCalculations from '@/components/PatchCalculations'
+import PrintPatchTable from '@/components/PrintPatchTable'
 import PrintButton from '@/components/PrintButton'
 
-async function getIdFromReferer(): Promise<string | undefined> {
-  const h = await headers()
-  const referer = h.get('referer')
-  if (!referer) return undefined
-  try {
-    const { pathname } = new URL(referer)
-    const parts = pathname.split('/').filter(Boolean)
-    const patchesIndex = parts.indexOf('patches')
-    if (patchesIndex === -1) return undefined
-    return parts[patchesIndex + 1]
-  } catch {
-    return undefined
-  }
-}
-
-export default async function PrintPage({ params }: { params: { id?: string } }) {
-  const id = params?.id ?? (await getIdFromReferer())
+export default async function PrintPage({ params }: { params: Promise<{ id?: string }> }) {
+  const { id } = await params
   if (!id) notFound()
 
   const patch = await prisma.patch.findUnique({
@@ -30,28 +13,31 @@ export default async function PrintPage({ params }: { params: { id?: string } })
   })
   if (!patch) notFound()
 
-  return (
-    <div className="max-w-5xl mx-auto px-8 py-10 print:p-4">
-      <div className="mb-6 print:mb-4">
-        <h1 className="text-6xl font-black tracking-widest text-gray-900 mb-1">PATCH</h1>
-        <div className="text-xl font-semibold text-gray-700 mb-1">{patch.title}</div>
-        <div className="text-sm text-gray-500">Last updated: {new Date(patch.updatedAt).toLocaleString()}</div>
-      </div>
+  const dateStr = new Date(patch.updatedAt).toLocaleDateString('fi-FI')
 
-      <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
-        <div className="space-y-1">
-          <div><span className="font-medium">Designer:</span> {patch.designerName}</div>
-          {patch.designerCompany && <div><span className="font-medium">Company:</span> {patch.designerCompany}</div>}
-          {patch.designerEmail && <div><span className="font-medium">Email:</span> {patch.designerEmail}</div>}
-          {patch.designerPhone && <div><span className="font-medium">Phone:</span> {patch.designerPhone}</div>}
+  return (
+    <div className="max-w-4xl mx-auto px-8 py-10 bg-white min-h-screen print:px-0 print:py-0">
+      {/* Top header: date left, designer info right */}
+      <div className="flex justify-between items-start mb-8 text-sm">
+        <div className="text-gray-500">Updated {dateStr}</div>
+        <div className="text-right">
+          <div className="font-bold">{patch.designerName}</div>
+          {patch.designerPhone && <div>{patch.designerPhone}</div>}
+          {patch.designerEmail && <div>{patch.designerEmail}</div>}
+          {patch.designerCompany && <div>{patch.designerCompany}</div>}
         </div>
       </div>
 
-      <div className="mb-6 overflow-x-auto">
-        <PatchTable groups={patch.groups} />
+      {/* Centered title block */}
+      <div className="text-center mb-10">
+        <h1 className="text-7xl font-black tracking-widest text-gray-900 mb-4">PATCH</h1>
+        <h2 className="text-2xl font-bold text-gray-800">{patch.title}</h2>
       </div>
 
-      <PatchCalculations groups={patch.groups} />
+      {/* Grouped fixture tables */}
+      <div className="mb-8">
+        <PrintPatchTable groups={patch.groups} />
+      </div>
 
       {patch.notes && (
         <div className="mt-6 border border-gray-300 rounded p-4">
@@ -59,6 +45,9 @@ export default async function PrintPage({ params }: { params: { id?: string } })
           <div className="text-sm text-gray-600">{patch.notes}</div>
         </div>
       )}
+
+      {/* Page footer */}
+      <div className="mt-12 text-sm text-gray-400">Page 1 of 1</div>
 
       <div className="mt-8 print:hidden">
         <PrintButton />
