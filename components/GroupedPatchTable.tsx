@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback, Fragment } from 'react'
 import SearchableSelect from '@/components/SearchableSelect'
 import { exceedsUniverse, getLastUsedAddress, getOverlappingStartAddresses } from '@/lib/calculations'
 
@@ -193,19 +193,71 @@ function EditGroupRow({
   )
 }
 
+type Section = { fixture: Fixture; mode: Mode; groups: Group[] }
+
 export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupChanged }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [reordering, setReordering] = useState(false)
+  const [reorderError, setReorderError] = useState<string | null>(null)
 
-  const sorted = [...groups].sort((a, b) => a.order - b.order)
   const overlappingStarts = useMemo(() => getOverlappingStartAddresses(groups), [groups])
 
   // Group by fixture + mode while preserving order of first occurrence
-  const seen = new Map<string, { fixture: Fixture; mode: Mode; groups: Group[] }>()
-  for (const g of sorted) {
-    const key = `${g.fixture.id}_${g.mode.id}`
-    if (!seen.has(key)) seen.set(key, { fixture: g.fixture, mode: g.mode, groups: [] })
-    seen.get(key)!.groups.push(g)
-  }
+  const sections = useMemo<Section[]>(() => {
+    const sorted = [...groups].sort((a, b) => a.order - b.order)
+    const seen = new Map<string, Section>()
+    for (const g of sorted) {
+      const key = `${g.fixture.id}_${g.mode.id}`
+      if (!seen.has(key)) seen.set(key, { fixture: g.fixture, mode: g.mode, groups: [] })
+      seen.get(key)!.groups.push(g)
+    }
+    return Array.from(seen.values())
+  }, [groups])
+
+  const performReorder = useCallback(async (newSections: Section[]) => {
+    setReordering(true)
+    setReorderError(null)
+    try {
+      const orders: { id: string; order: number }[] = []
+      let orderIdx = 0
+      for (const s of newSections) {
+        for (const g of s.groups) {
+          orders.push({ id: g.id, order: orderIdx++ })
+        }
+      }
+      const res = await fetch(`/api/patches/${patchId}/groups/reorder`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orders }),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        setReorderError(d?.error ?? 'Failed to reorder')
+        return
+      }
+      onGroupChanged()
+    } finally {
+      setReordering(false)
+    }
+  }, [patchId, onGroupChanged])
+
+  const handleMoveSection = useCallback(async (sectionIdx: number, direction: 'up' | 'down') => {
+    const newIdx = direction === 'up' ? sectionIdx - 1 : sectionIdx + 1
+    if (newIdx < 0 || newIdx >= sections.length) return
+    const newSections = [...sections]
+    ;[newSections[sectionIdx], newSections[newIdx]] = [newSections[newIdx], newSections[sectionIdx]]
+    await performReorder(newSections)
+  }, [sections, performReorder])
+
+  const handleMoveGroup = useCallback(async (sectionIdx: number, groupIdx: number, direction: 'up' | 'down') => {
+    const newGroupIdx = direction === 'up' ? groupIdx - 1 : groupIdx + 1
+    const section = sections[sectionIdx]
+    if (newGroupIdx < 0 || newGroupIdx >= section.groups.length) return
+    const newGroups = [...section.groups]
+    ;[newGroups[groupIdx], newGroups[newGroupIdx]] = [newGroups[newGroupIdx], newGroups[groupIdx]]
+    const newSections = sections.map((s, i) => i === sectionIdx ? { ...s, groups: newGroups } : s)
+    await performReorder(newSections)
+  }, [sections, performReorder])
 
   const handleDelete = async (groupId: string) => {
     if (!confirm('Remove this group?')) return
@@ -221,6 +273,9 @@ export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupCh
 
   return (
     <div className="w-full overflow-x-auto">
+      {reorderError && (
+        <div className="mx-3 mb-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded px-3 py-2">{reorderError}</div>
+      )}
       <div className="inline-block min-w-full align-top">
         <table className="w-full border-collapse text-sm">
           <colgroup>
@@ -232,7 +287,7 @@ export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupCh
             <col className="w-[22%]" />
           </colgroup>
           <tbody>
-            {Array.from(seen.values()).map(({ fixture, mode, groups: fGroups }, sectionIdx) => {
+            {sections.map(({ fixture, mode, groups: fGroups }, sectionIdx) => {
               const totalPcs = fGroups.reduce((sum, g) => sum + g.amount, 0)
               const uniqueUniverses = new Set(fGroups.map((g) => g.universe)).size
               const universeLabel = uniqueUniverses === 1 ? 'universe' : 'universes'
@@ -250,7 +305,25 @@ export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupCh
                       <span className="font-bold">MODE:</span> {mode.name}
                     </td>
                     <td className="border border-gray-300 px-3 py-2 font-bold">
-                      Total {totalPcs} pieces in {uniqueUniverses} {universeLabel}
+                      <div className="flex items-center justify-between gap-2">
+                        <span>Total {totalPcs} pieces in {uniqueUniverses} {universeLabel}</span>
+                        {sections.length > 1 && (
+                          <span className="flex gap-1 flex-shrink-0">
+                            <button
+                              onClick={() => handleMoveSection(sectionIdx, 'up')}
+                              disabled={sectionIdx === 0 || reordering}
+                              title="Move section up"
+                              className="text-gray-500 hover:text-gray-700 text-xs px-1 py-0.5 rounded hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed font-bold"
+                            >↑</button>
+                            <button
+                              onClick={() => handleMoveSection(sectionIdx, 'down')}
+                              disabled={sectionIdx === sections.length - 1 || reordering}
+                              title="Move section down"
+                              className="text-gray-500 hover:text-gray-700 text-xs px-1 py-0.5 rounded hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed font-bold"
+                            >↓</button>
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
 
@@ -262,7 +335,7 @@ export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupCh
                     <td title="Addresses" colSpan={2} className="border border-gray-300 px-3 py-2 font-semibold text-xs">Addresses</td>
                   </tr>
 
-                  {fGroups.map((g) => {
+                  {fGroups.map((g, groupIdx) => {
                     if (editingId === g.id) {
                       return (
                         <EditGroupRow
@@ -336,6 +409,22 @@ export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupCh
                               ))}
                             </span>
                             <span className="flex gap-1 flex-shrink-0">
+                              {fGroups.length > 1 && (
+                                <>
+                                  <button
+                                    onClick={() => handleMoveGroup(sectionIdx, groupIdx, 'up')}
+                                    disabled={groupIdx === 0 || reordering}
+                                    title="Move group up"
+                                    className="text-gray-400 hover:text-gray-600 text-xs px-1 py-0.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                                  >↑</button>
+                                  <button
+                                    onClick={() => handleMoveGroup(sectionIdx, groupIdx, 'down')}
+                                    disabled={groupIdx === fGroups.length - 1 || reordering}
+                                    title="Move group down"
+                                    className="text-gray-400 hover:text-gray-600 text-xs px-1 py-0.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                                  >↓</button>
+                                </>
+                              )}
                               <button onClick={() => setEditingId(g.id)} className="text-blue-500 hover:text-blue-700 text-xs px-1.5 py-0.5 rounded hover:bg-blue-50">✏️</button>
                               <button onClick={() => handleDelete(g.id)} className="text-red-500 hover:text-red-700 text-xs px-1.5 py-0.5 rounded hover:bg-red-50">✕</button>
                             </span>
