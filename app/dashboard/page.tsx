@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 
 type PatchRow = {
   id: string
+  slug: string
   title: string
   designerName: string
   updatedAt: Date
@@ -19,7 +20,14 @@ export default async function DashboardPage() {
   const patches: PatchRow[] = await prisma.patch.findMany({
     where: { userId: session.user.id },
     orderBy: { updatedAt: 'desc' },
-    include: { _count: { select: { groups: true } } },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      designerName: true,
+      updatedAt: true,
+      _count: { select: { groups: true } },
+    },
   })
 
   return (
@@ -41,8 +49,8 @@ export default async function DashboardPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {patches.map((p: PatchRow) => (
-            <Link key={p.id} href={`/patches/${p.id}`} className="block bg-white rounded-lg border border-gray-200 p-4 hover:border-blue-300 hover:shadow-sm transition-all">
+          {patches.map((p) => (
+            <Link key={p.id} href={`/patches/${p.slug}`} className="block bg-white rounded-lg border border-gray-200 p-4 hover:border-blue-300 hover:shadow-sm transition-all">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="font-semibold text-gray-900">{p.title}</div>
