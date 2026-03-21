@@ -7,8 +7,8 @@ export default async function PrintPage({ params }: { params: Promise<{ id?: str
   const { id } = await params
   if (!id) notFound()
 
-  const patch = await prisma.patch.findUnique({
-    where: { id },
+  const patch = await prisma.patch.findFirst({
+    where: { OR: [{ id }, { slug: id }] },
     include: { groups: { include: { fixture: true, mode: true }, orderBy: { order: 'asc' } } },
   })
   if (!patch) notFound()
