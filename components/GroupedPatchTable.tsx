@@ -1,6 +1,7 @@
 'use client'
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
 import SearchableSelect from '@/components/SearchableSelect'
+import { exceedsUniverse, getLastUsedAddress, getOverlappingStartAddresses } from '@/lib/calculations'
 
 type Mode = { id: string; name: string; channelCount: number }
 type Fixture = { id: string; name: string; manufacturer: string; weight: number; powerConsumption: number; modes: Mode[] }
@@ -196,6 +197,7 @@ export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupCh
   const [editingId, setEditingId] = useState<string | null>(null)
 
   const sorted = [...groups].sort((a, b) => a.order - b.order)
+  const overlappingStarts = useMemo(() => getOverlappingStartAddresses(groups), [groups])
 
   // Group by fixture + mode while preserving order of first occurrence
   const seen = new Map<string, { fixture: Fixture; mode: Mode; groups: Group[] }>()
@@ -236,7 +238,7 @@ export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupCh
               const universeLabel = uniqueUniverses === 1 ? 'universe' : 'universes'
 
               return (
-                <>
+                <Fragment key={`${fixture.id}_${mode.id}`}>
                   <tr className="bg-gray-100">
                     <td title="Manufacturer" colSpan={2} className="border border-gray-300 px-3 py-2 font-bold">
                       {fixture.manufacturer}
@@ -245,7 +247,7 @@ export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupCh
                       {fixture.name}
                     </td>
                     <td title="Fixture Mode" className="border border-gray-300 px-3 py-2">
-                      <span className="font-bold">MODE:</span> {mode.name} ({mode.channelCount}ch)
+                      <span className="font-bold">MODE:</span> {mode.name}
                     </td>
                     <td className="border border-gray-300 px-3 py-2 font-bold">
                       Total {totalPcs} pieces in {uniqueUniverses} {universeLabel}
@@ -279,16 +281,49 @@ export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupCh
                     )
                     const idEnd = g.startingId + g.amount - 1
                     const idRange = g.amount > 1 ? `${g.startingId} – ${idEnd}` : `${g.startingId}`
+                    const overlapKey = `${(g.universe || '').toUpperCase()}:${g.startingAddress}`
+                    const overlaps = overlappingStarts.has(overlapKey)
 
                     return (
                       <tr key={g.id} className="border-b border-gray-200 hover:bg-gray-50">
                         <td title="Pieces" className="border border-gray-300 px-3 py-2 whitespace-nowrap">{g.amount}</td>
-                        <td title="Universe" className="border border-gray-300 px-3 py-2 font-mono font-bold whitespace-nowrap">{g.universe}</td>
+                        <td
+                          title="Universe"
+                          className={
+                            `border border-gray-300 px-3 py-2 font-mono font-bold whitespace-nowrap ` +
+                            (overlaps ? 'bg-orange-50 text-orange-800' : '')
+                          }
+                        >
+                          {g.universe}
+                        </td>
                         <td title="ID" className="border border-gray-300 px-3 py-2 font-mono whitespace-nowrap">{idRange}</td>
                         <td title="Position" className="border border-gray-300 px-3 py-2 whitespace-nowrap">{g.position}</td>
-                        <td title="Addresses" colSpan={2} className="border border-gray-300 px-3 py-2 font-mono text-xs">
+                        <td
+                          title="Addresses"
+                          colSpan={2}
+                          className={
+                            `border border-gray-300 px-3 py-2 font-mono text-xs ` +
+                            (overlaps ? 'bg-orange-50' : '')
+                          }
+                        >
                           <div className="flex items-center justify-between gap-2">
-                            <span className="truncate">{addresses.join(', ')}</span>
+                            <span className="truncate">
+                              {addresses.map((a, idx) => (
+                                <span
+                                  key={idx}
+                                  className={
+                                    a > 512
+                                      ? 'text-red-700 font-bold'
+                                      : overlaps
+                                        ? 'text-orange-800 font-semibold'
+                                        : ''
+                                  }
+                                >
+                                  {a}
+                                  {idx < addresses.length - 1 ? ', ' : ''}
+                                </span>
+                              ))}
+                            </span>
                             <span className="flex gap-1 flex-shrink-0">
                               <button onClick={() => setEditingId(g.id)} className="text-blue-500 hover:text-blue-700 text-xs px-1.5 py-0.5 rounded hover:bg-blue-50">✏️</button>
                               <button onClick={() => handleDelete(g.id)} className="text-red-500 hover:text-red-700 text-xs px-1.5 py-0.5 rounded hover:bg-red-50">✕</button>
@@ -302,7 +337,7 @@ export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupCh
                   <tr>
                     <td colSpan={6} className="border-x-0 border-b-0 border-gray-300 px-3 py-8" />
                   </tr>
-                </>
+                </Fragment>
               )
             })}
           </tbody>

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import SearchableSelect from '@/components/SearchableSelect'
+import { getLastUsedAddress } from '@/lib/calculations'
 
 type Mode = { id: string; name: string; channelCount: number }
 type Fixture = { id: string; manufacturer: string; name: string; modes: Mode[] }
@@ -24,6 +25,33 @@ export default function GroupForm({ fixtures, patchId, onGroupAdded }: Props) {
   const [modeId, setModeId] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Fetch existing groups for this patch so we can suggest next free DMX address per universe.
+  const [existingGroups, setExistingGroups] = useState<
+    Array<{ universe: string; startingAddress: number; amount: number; mode: { channelCount: number } }>
+  >([])
+
+  useEffect(() => {
+    // Keep this lightweight: only used for address suggestion.
+    fetch(`/api/patches/${patchId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((p) => setExistingGroups(p?.groups ?? []))
+      .catch(() => setExistingGroups([]))
+  }, [patchId, onGroupAdded])
+
+  const firstFreeAddress = useMemo(() => {
+    const u = (universe || '').toUpperCase()
+    const inU = existingGroups.filter((g) => (g.universe || '').toUpperCase() === u)
+    let last = 0
+    for (const g of inU) {
+      const usedEnd = getLastUsedAddress(g.startingAddress, g.mode.channelCount, g.amount)
+      last = Math.max(last, usedEnd)
+    }
+    const candidate = last + 1
+    if (candidate < 1) return 1
+    if (candidate > 512) return 512
+    return candidate
+  }, [existingGroups, universe])
 
   // Step 1: unique manufacturers
   const manufacturerOptions = useMemo(() => {
@@ -140,7 +168,7 @@ export default function GroupForm({ fixtures, patchId, onGroupAdded }: Props) {
             <input type="number" value={startingId} onChange={(e) => setStartingId(e.target.value)} min="1" placeholder="1" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
           </div>
           <div>
-            <label className="block text-xs text-gray-600 mb-1">Start Addr</label>
+            <label className="block text-xs text-gray-600 mb-1">Start Addr <span className="text-gray-400">(next free: {firstFreeAddress})</span></label>
             <input type="number" value={startingAddress} onChange={(e) => setStartingAddress(e.target.value)} min="1" max="512" placeholder="1" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
           </div>
           <div>

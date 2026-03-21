@@ -30,7 +30,7 @@ export default async function PrintPage({ params }: { params: Promise<{ id?: str
 
       {/* Centered title block */}
       <div className="text-center mb-10">
-        <h1 className="text-7xl font-black tracking-widest text-gray-900 mb-4">PATCH</h1>
+        <h1 className="text-7xl font-black text-gray-900 mb-4">PATCH</h1>
         <h2 className="text-2xl font-bold text-gray-800">{patch.title}</h2>
       </div>
 

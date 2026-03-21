@@ -12,6 +12,43 @@ export function exceedsUniverse(startingAddress: number, channelCount: number, a
   return getLastUsedAddress(startingAddress, channelCount, amount) > 512
 }
 
+/**
+ * Returns a set of "start addresses" that have at least one overlap with another group in the same universe.
+ *
+ * Overlap rule: [start,end] intersects another [start,end].
+ */
+export function getOverlappingStartAddresses(
+  groups: Array<{ universe: string; startingAddress: number; mode: { channelCount: number }; amount: number }>
+): Set<string> {
+  type Range = { key: string; start: number; end: number }
+
+  const byUniverse: Record<string, Range[]> = {}
+  for (const g of groups) {
+    const u = (g.universe || '').toUpperCase()
+    if (!u) continue
+    const start = g.startingAddress
+    const end = getLastUsedAddress(g.startingAddress, g.mode.channelCount, g.amount)
+    const key = `${u}:${start}`
+    if (!byUniverse[u]) byUniverse[u] = []
+    byUniverse[u].push({ key, start, end })
+  }
+
+  const overlaps = new Set<string>()
+  for (const ranges of Object.values(byUniverse)) {
+    for (let i = 0; i < ranges.length; i++) {
+      for (let j = i + 1; j < ranges.length; j++) {
+        const a = ranges[i], b = ranges[j]
+        if (a.start <= b.end && b.start <= a.end) {
+          overlaps.add(a.key)
+          overlaps.add(b.key)
+        }
+      }
+    }
+  }
+
+  return overlaps
+}
+
 export function hasAddressConflict(
   groups: Array<{ universe: string; startingAddress: number; mode: { channelCount: number }; amount: number }>
 ): boolean {

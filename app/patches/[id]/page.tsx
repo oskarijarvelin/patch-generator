@@ -155,7 +155,7 @@ export default function PatchPage() {
         ) : (
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-4xl font-black text-gray-900 tracking-wide">PATCH</h1>
+              <h1 className="text-4xl font-black text-gray-900">PATCH</h1>
               <span className="text-gray-400 text-2xl">—</span>
               <h2 className="text-2xl font-semibold text-gray-700">{patch.title}</h2>
             </div>
