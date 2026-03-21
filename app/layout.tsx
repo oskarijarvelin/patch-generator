@@ -12,6 +12,7 @@ const bodyFont = Open_Sans({
 
 const titleFont = Roboto_Condensed({
   subsets: ['latin'],
+  weight: ['700'],
   variable: '--font-title',
   display: 'swap',
 })

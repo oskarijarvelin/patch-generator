@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import SearchableSelect from '@/components/SearchableSelect'
 
 type Mode = { id: string; name: string; channelCount: number }
 type Fixture = { id: string; manufacturer: string; name: string; modes: Mode[] }
@@ -18,17 +19,56 @@ export default function GroupForm({ fixtures, patchId, onGroupAdded }: Props) {
   const [startingId, setStartingId] = useState('')
   const [startingAddress, setStartingAddress] = useState('')
   const [amount, setAmount] = useState('1')
+  const [manufacturer, setManufacturer] = useState('')
   const [fixtureId, setFixtureId] = useState('')
   const [modeId, setModeId] = useState('')
-  const [modes, setModes] = useState<Mode[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  // Step 1: unique manufacturers
+  const manufacturerOptions = useMemo(() => {
+    const unique = Array.from(new Set(fixtures.map((f) => f.manufacturer))).sort()
+    return unique.map((m) => ({ value: m, label: m }))
+  }, [fixtures])
+
+  // Step 2: models filtered by manufacturer
+  const modelOptions = useMemo(() => {
+    if (!manufacturer) return []
+    return fixtures
+      .filter((f) => f.manufacturer === manufacturer)
+      .map((f) => ({ value: f.id, label: f.name }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [manufacturer, fixtures])
+
+  // Step 3: modes filtered by selected fixture
+  const modeOptions = useMemo(() => {
+    if (!fixtureId) return []
     const f = fixtures.find((x) => x.id === fixtureId)
-    setModes(f?.modes ?? [])
-    setModeId('')
+    return (f?.modes ?? []).map((m) => ({ value: m.id, label: `${m.name} (${m.channelCount}ch)` }))
   }, [fixtureId, fixtures])
+
+  // Reset downstream selections when manufacturer changes (skip on initial render)
+  const isFirstManufacturerRender = useRef(true)
+  useEffect(() => {
+    if (isFirstManufacturerRender.current) {
+      isFirstManufacturerRender.current = false
+      return
+    }
+    setFixtureId('')
+    setModeId('')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manufacturer])
+
+  // Reset mode when fixture changes (skip on initial render)
+  const isFirstFixtureRender = useRef(true)
+  useEffect(() => {
+    if (isFirstFixtureRender.current) {
+      isFirstFixtureRender.current = false
+      return
+    }
+    setModeId('')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fixtureId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,6 +101,7 @@ export default function GroupForm({ fixtures, patchId, onGroupAdded }: Props) {
       setStartingId('')
       setStartingAddress('')
       setAmount('1')
+      setManufacturer('')
       setFixtureId('')
       setModeId('')
       onGroupAdded()
@@ -78,7 +119,7 @@ export default function GroupForm({ fixtures, patchId, onGroupAdded }: Props) {
         </div>
       )}
       <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-3">
           <div>
             <label className="block text-xs text-gray-600 mb-1">Position</label>
             <input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="e.g. SR" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
@@ -106,32 +147,36 @@ export default function GroupForm({ fixtures, patchId, onGroupAdded }: Props) {
             <label className="block text-xs text-gray-600 mb-1">Amount</label>
             <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} min="1" placeholder="1" required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
           </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
           <div>
-            <label className="block text-xs text-gray-600 mb-1">Fixture</label>
-            <select
-              aria-label="Fixture"
+            <label className="block text-xs text-gray-600 mb-1">Manufacturer</label>
+            <SearchableSelect
+              options={manufacturerOptions}
+              value={manufacturer}
+              onChange={setManufacturer}
+              placeholder="Select manufacturer…"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Model</label>
+            <SearchableSelect
+              options={modelOptions}
               value={fixtureId}
-              onChange={(e) => setFixtureId(e.target.value)}
-              required
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-            >
-              <option value="">Select fixture</option>
-              {fixtures.map((f) => <option key={f.id} value={f.id}>{f.manufacturer} {f.name}</option>)}
-            </select>
+              onChange={setFixtureId}
+              placeholder="Select model…"
+              disabled={!manufacturer}
+            />
           </div>
           <div>
             <label className="block text-xs text-gray-600 mb-1">Mode</label>
-            <select
-              aria-label="Mode"
+            <SearchableSelect
+              options={modeOptions}
               value={modeId}
-              onChange={(e) => setModeId(e.target.value)}
-              required
+              onChange={setModeId}
+              placeholder="Select mode…"
               disabled={!fixtureId}
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm disabled:opacity-50"
-            >
-              <option value="">Select mode</option>
-              {modes.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.channelCount}ch)</option>)}
-            </select>
+            />
           </div>
         </div>
         <button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded text-sm font-medium">

@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import SearchableSelect from '@/components/SearchableSelect'
 
 type Mode = { id: string; name: string; channelCount: number }
 type Fixture = { id: string; name: string; manufacturer: string; weight: number; powerConsumption: number; modes: Mode[] }
@@ -40,18 +41,58 @@ function EditGroupRow({
   const [startingId, setStartingId] = useState(String(group.startingId))
   const [startingAddress, setStartingAddress] = useState(String(group.startingAddress))
   const [amount, setAmount] = useState(String(group.amount))
+  const [manufacturer, setManufacturer] = useState(group.fixture.manufacturer)
   const [fixtureId, setFixtureId] = useState(group.fixture.id)
   const [modeId, setModeId] = useState(group.mode.id)
-  const [availableModes, setAvailableModes] = useState<Mode[]>(group.fixture.modes ?? [])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Step 1: unique manufacturers
+  const manufacturerOptions = useMemo(() => {
+    const unique = Array.from(new Set(fixtures.map((f) => f.manufacturer))).sort()
+    return unique.map((m) => ({ value: m, label: m }))
+  }, [fixtures])
+
+  // Step 2: models filtered by manufacturer
+  const modelOptions = useMemo(() => {
+    if (!manufacturer) return []
+    return fixtures
+      .filter((f) => f.manufacturer === manufacturer)
+      .map((f) => ({ value: f.id, label: f.name }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [manufacturer, fixtures])
+
+  // Step 3: modes filtered by selected fixture
+  const modeOptions = useMemo(() => {
+    if (!fixtureId) return []
+    const f = fixtures.find((x) => x.id === fixtureId)
+    return (f?.modes ?? []).map((m) => ({ value: m.id, label: `${m.name} (${m.channelCount}ch)` }))
+  }, [fixtureId, fixtures])
+
+  // Reset downstream when manufacturer changes (skip on initial render)
+  const isFirstManufacturerRender = useRef(true)
   useEffect(() => {
+    if (isFirstManufacturerRender.current) {
+      isFirstManufacturerRender.current = false
+      return
+    }
+    setFixtureId('')
+    setModeId('')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manufacturer])
+
+  // Reset mode when fixture changes (skip on initial render)
+  const isFirstFixtureRender = useRef(true)
+  useEffect(() => {
+    if (isFirstFixtureRender.current) {
+      isFirstFixtureRender.current = false
+      return
+    }
     const f = fixtures.find((x) => x.id === fixtureId)
     const modes = f?.modes ?? []
-    setAvailableModes(modes)
     if (!modes.find((m) => m.id === modeId)) setModeId(modes[0]?.id ?? '')
-  }, [fixtureId, fixtures, modeId])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fixtureId])
 
   const handleSave = async () => {
     setError(null)
@@ -85,7 +126,7 @@ function EditGroupRow({
     <tr className="bg-blue-50 border-b border-gray-200">
       <td colSpan={6} className="px-3 py-3">
         {error && <div className="text-red-600 text-xs mb-2">{error}</div>}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 mb-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-2">
           <div>
             <label className="block text-xs text-gray-500 mb-0.5">Position</label>
             <input value={position} onChange={(e) => setPosition(e.target.value)} className="w-full border border-gray-300 rounded px-2 py-1 text-xs" />
@@ -108,17 +149,36 @@ function EditGroupRow({
             <label className="block text-xs text-gray-500 mb-0.5">Amount</label>
             <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} min="1" className="w-full border border-gray-300 rounded px-2 py-1 text-xs" />
           </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
           <div>
-            <label className="block text-xs text-gray-500 mb-0.5">Fixture</label>
-            <select value={fixtureId} onChange={(e) => setFixtureId(e.target.value)} aria-label="Fixture" className="w-full border border-gray-300 rounded px-2 py-1 text-xs">
-              {fixtures.map((f) => <option key={f.id} value={f.id}>{f.manufacturer} {f.name}</option>)}
-            </select>
+            <label className="block text-xs text-gray-500 mb-0.5">Manufacturer</label>
+            <SearchableSelect
+              options={manufacturerOptions}
+              value={manufacturer}
+              onChange={setManufacturer}
+              placeholder="Select manufacturer…"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">Model</label>
+            <SearchableSelect
+              options={modelOptions}
+              value={fixtureId}
+              onChange={setFixtureId}
+              placeholder="Select model…"
+              disabled={!manufacturer}
+            />
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-0.5">Mode</label>
-            <select value={modeId} onChange={(e) => setModeId(e.target.value)} aria-label="Mode" disabled={!fixtureId} className="w-full border border-gray-300 rounded px-2 py-1 text-xs disabled:opacity-50">
-              {availableModes.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.channelCount}ch)</option>)}
-            </select>
+            <SearchableSelect
+              options={modeOptions}
+              value={modeId}
+              onChange={setModeId}
+              placeholder="Select mode…"
+              disabled={!fixtureId}
+            />
           </div>
         </div>
         <div className="flex gap-2">
