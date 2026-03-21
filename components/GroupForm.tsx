@@ -73,7 +73,7 @@ export default function GroupForm({ fixtures, patchId, onGroupAdded }: Props) {
   const modeOptions = useMemo(() => {
     if (!fixtureId) return []
     const f = fixtures.find((x) => x.id === fixtureId)
-    return (f?.modes ?? []).map((m) => ({ value: m.id, label: `${m.name} (${m.channelCount}ch)` }))
+    return (f?.modes ?? []).map((m) => ({ value: m.id, label: `${m.name}` }))
   }, [fixtureId, fixtures])
 
   // Reset downstream selections when manufacturer changes (skip on initial render)
