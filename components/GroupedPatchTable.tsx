@@ -129,7 +129,7 @@ function EditGroupRow({
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-2">
           <div>
             <label className="block text-xs text-gray-500 mb-0.5">Position</label>
-            <input value={position} onChange={(e) => setPosition(e.target.value)} className="w-full border border-gray-300 rounded px-2 py-1 text-xs" />
+            <input aria-label="Position" value={position} onChange={(e) => setPosition(e.target.value)} className="w-full border border-gray-300 rounded px-2 py-1 text-xs" />
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-0.5">Universe</label>
@@ -139,15 +139,15 @@ function EditGroupRow({
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-0.5">Start ID</label>
-            <input type="number" value={startingId} onChange={(e) => setStartingId(e.target.value)} min="1" className="w-full border border-gray-300 rounded px-2 py-1 text-xs" />
+            <input aria-label="Start ID" type="number" value={startingId} onChange={(e) => setStartingId(e.target.value)} min="1" className="w-full border border-gray-300 rounded px-2 py-1 text-xs" />
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-0.5">Start Addr</label>
-            <input type="number" value={startingAddress} onChange={(e) => setStartingAddress(e.target.value)} min="1" max="512" className="w-full border border-gray-300 rounded px-2 py-1 text-xs" />
+            <input aria-label="Start Address" type="number" value={startingAddress} onChange={(e) => setStartingAddress(e.target.value)} min="1" max="512" className="w-full border border-gray-300 rounded px-2 py-1 text-xs" />
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-0.5">Amount</label>
-            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} min="1" className="w-full border border-gray-300 rounded px-2 py-1 text-xs" />
+            <input aria-label="Amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} min="1" className="w-full border border-gray-300 rounded px-2 py-1 text-xs" />
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
@@ -218,77 +218,96 @@ export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupCh
   }
 
   return (
-    <div className="space-y-6 overflow-x-auto">
-      {Array.from(seen.values()).map(({ fixture, mode, groups: fGroups }) => {
-        const totalPcs = fGroups.reduce((sum, g) => sum + g.amount, 0)
-        const uniqueUniverses = new Set(fGroups.map((g) => g.universe)).size
-        const universeLabel = uniqueUniverses === 1 ? 'universe' : 'universes'
+    <div className="w-full overflow-x-auto">
+      <div className="inline-block min-w-full align-top">
+        <table className="w-full border-collapse text-sm">
+          <colgroup>
+            <col className="w-[6%]" />
+            <col className="w-[6%]" />
+            <col className="w-[12%]" />
+            <col className="w-[16%]" />
+            <col className="w-[38%]" />
+            <col className="w-[22%]" />
+          </colgroup>
+          <tbody>
+            {Array.from(seen.values()).map(({ fixture, mode, groups: fGroups }, sectionIdx) => {
+              const totalPcs = fGroups.reduce((sum, g) => sum + g.amount, 0)
+              const uniqueUniverses = new Set(fGroups.map((g) => g.universe)).size
+              const universeLabel = uniqueUniverses === 1 ? 'universe' : 'universes'
 
-        return (
-          <table key={`${fixture.id}_${mode.id}`} className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-300 px-3 py-2 text-left font-bold w-[15%]">
-                  {fixture.manufacturer}
-                </th>
-                <th colSpan={2} className="border border-gray-300 px-3 py-2 text-left font-normal">
-                  {fixture.name}
-                </th>
-                <th className="border border-gray-300 px-3 py-2 text-left font-normal w-[22%]">
-                  <span className="font-bold">MODE:</span> {mode.name} {mode.channelCount} ch
-                </th>
-                <th colSpan={2} className="border border-gray-300 px-3 py-2 text-left font-normal w-[25%]">
-                  Total {totalPcs} pcs in {uniqueUniverses} {universeLabel}
-                </th>
-              </tr>
-              <tr className="bg-gray-50">
-                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">Pcs</th>
-                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">UNI</th>
-                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">ID</th>
-                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">Position</th>
-                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">Addresses</th>
-                <th className="border border-gray-300 px-3 py-2 text-xs w-[10%]"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {fGroups.map((g) => {
-                if (editingId === g.id) {
-                  return (
-                    <EditGroupRow
-                      key={g.id}
-                      group={g}
-                      fixtures={fixtures}
-                      patchId={patchId}
-                      onDone={() => { setEditingId(null); onGroupChanged() }}
-                    />
-                  )
-                }
-                const addresses = Array.from(
-                  { length: g.amount },
-                  (_, i) => g.startingAddress + i * g.mode.channelCount
-                )
-                const idEnd = g.startingId + g.amount - 1
-                const idRange = g.amount > 1 ? `${g.startingId}-${idEnd}` : `${g.startingId}`
-                return (
-                  <tr key={g.id} className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="border border-gray-300 px-3 py-2">{g.amount}</td>
-                    <td className="border border-gray-300 px-3 py-2 font-mono font-bold">{g.universe}</td>
-                    <td className="border border-gray-300 px-3 py-2 font-mono">{idRange}</td>
-                    <td className="border border-gray-300 px-3 py-2">{g.position}</td>
-                    <td className="border border-gray-300 px-3 py-2 font-mono text-xs">{addresses.join(', ')}</td>
-                    <td className="border border-gray-300 px-3 py-2">
-                      <div className="flex gap-1 justify-end">
-                        <button onClick={() => setEditingId(g.id)} className="text-blue-500 hover:text-blue-700 text-xs px-1.5 py-0.5 rounded hover:bg-blue-50">✏️</button>
-                        <button onClick={() => handleDelete(g.id)} className="text-red-500 hover:text-red-700 text-xs px-1.5 py-0.5 rounded hover:bg-red-50">✕</button>
-                      </div>
+              return (
+                <>
+                  <tr className="bg-gray-100">
+                    <td title="Manufacturer" colSpan={2} className="border border-gray-300 px-3 py-2 font-bold">
+                      {fixture.manufacturer}
+                    </td>
+                    <td title="Fixture Name" colSpan={2} className="border border-gray-300 px-3 py-2">
+                      {fixture.name}
+                    </td>
+                    <td title="Fixture Mode" className="border border-gray-300 px-3 py-2">
+                      <span className="font-bold">MODE:</span> {mode.name} ({mode.channelCount}ch)
+                    </td>
+                    <td className="border border-gray-300 px-3 py-2 font-bold">
+                      Total {totalPcs} pieces in {uniqueUniverses} {universeLabel}
                     </td>
                   </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        )
-      })}
+
+                  <tr className="bg-gray-50">
+                    <td title="Pieces" className="border border-gray-300 px-3 py-2 font-semibold text-xs">Pcs</td>
+                    <td title="Universe" className="border border-gray-300 px-3 py-2 font-semibold text-xs">Uni</td>
+                    <td title="ID" className="border border-gray-300 px-3 py-2 font-semibold text-xs">ID</td>
+                    <td title="Position" className="border border-gray-300 px-3 py-2 font-semibold text-xs">Position</td>
+                    <td title="Addresses" colSpan={2} className="border border-gray-300 px-3 py-2 font-semibold text-xs">Addresses</td>
+                  </tr>
+
+                  {fGroups.map((g) => {
+                    if (editingId === g.id) {
+                      return (
+                        <EditGroupRow
+                          key={g.id}
+                          group={g}
+                          fixtures={fixtures}
+                          patchId={patchId}
+                          onDone={() => { setEditingId(null); onGroupChanged() }}
+                        />
+                      )
+                    }
+
+                    const addresses = Array.from(
+                      { length: g.amount },
+                      (_, i) => g.startingAddress + i * g.mode.channelCount
+                    )
+                    const idEnd = g.startingId + g.amount - 1
+                    const idRange = g.amount > 1 ? `${g.startingId} – ${idEnd}` : `${g.startingId}`
+
+                    return (
+                      <tr key={g.id} className="border-b border-gray-200 hover:bg-gray-50">
+                        <td title="Pieces" className="border border-gray-300 px-3 py-2 whitespace-nowrap">{g.amount}</td>
+                        <td title="Universe" className="border border-gray-300 px-3 py-2 font-mono font-bold whitespace-nowrap">{g.universe}</td>
+                        <td title="ID" className="border border-gray-300 px-3 py-2 font-mono whitespace-nowrap">{idRange}</td>
+                        <td title="Position" className="border border-gray-300 px-3 py-2 whitespace-nowrap">{g.position}</td>
+                        <td title="Addresses" colSpan={2} className="border border-gray-300 px-3 py-2 font-mono text-xs">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate">{addresses.join(', ')}</span>
+                            <span className="flex gap-1 flex-shrink-0">
+                              <button onClick={() => setEditingId(g.id)} className="text-blue-500 hover:text-blue-700 text-xs px-1.5 py-0.5 rounded hover:bg-blue-50">✏️</button>
+                              <button onClick={() => handleDelete(g.id)} className="text-red-500 hover:text-red-700 text-xs px-1.5 py-0.5 rounded hover:bg-red-50">✕</button>
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+
+                  <tr>
+                    <td colSpan={6} className="border-x-0 border-b-0 border-gray-300 px-3 py-8" />
+                  </tr>
+                </>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
