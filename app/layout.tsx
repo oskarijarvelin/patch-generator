@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import SessionProvider from '@/components/SessionProvider'
 import Nav from '@/components/Nav'
 import { Open_Sans, Roboto_Condensed } from 'next/font/google'
 
@@ -34,10 +33,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="format-detection" content="telephone=no, date=no, email=no, address=no" />
       </head>
       <body className={`${bodyFont.variable} ${titleFont.variable} font-body`}>
-        <SessionProvider>
-          <Nav />
-          <main className="min-h-screen bg-gray-50">{children}</main>
-        </SessionProvider>
+        <Nav />
+        <main className="min-h-screen bg-gray-50">{children}</main>
       </body>
     </html>
   )

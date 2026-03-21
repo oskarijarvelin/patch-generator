@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { isLocalhostRequest } from '@/lib/is-localhost'
 import { prisma } from '@/lib/prisma'
 
 function getPatchIdFromRequestUrl(request: NextRequest): string | undefined {
@@ -21,14 +20,16 @@ function getPatchIdFromRequestUrl(request: NextRequest): string | undefined {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params?: { id?: string } } = {}
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions)
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isLocalhostRequest(request)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
-  const patchId = params?.id ?? getPatchIdFromRequestUrl(request)
+  const resolvedParams = await params
+  const patchId = resolvedParams?.id ?? getPatchIdFromRequestUrl(request)
   if (!patchId) {
-    console.error('Missing patch id', { params, url: request.url })
+    console.error('Missing patch id', { params: resolvedParams, url: request.url })
     return NextResponse.json({ error: 'Missing patch id' }, { status: 400 })
   }
 
@@ -39,8 +40,8 @@ export async function POST(
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Ensure the patch exists and belongs to the current user
-    const patch = await prisma.patch.findFirst({ where: { id: patchId, userId: session.user.id }, select: { id: true } })
+    // Ensure the patch exists
+    const patch = await prisma.patch.findFirst({ where: { id: patchId }, select: { id: true } })
     if (!patch) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const count = await prisma.patchGroup.count({ where: { patchId } })
