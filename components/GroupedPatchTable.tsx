@@ -1,0 +1,234 @@
+'use client'
+import { useState, useEffect } from 'react'
+
+type Mode = { id: string; name: string; channelCount: number }
+type Fixture = { id: string; name: string; manufacturer: string; weight: number; powerConsumption: number; modes: Mode[] }
+type Group = {
+  id: string
+  position: string
+  universe: string
+  startingId: number
+  startingAddress: number
+  amount: number
+  order: number
+  fixture: Fixture
+  mode: Mode
+}
+
+interface Props {
+  groups: Group[]
+  fixtures: Fixture[]
+  patchId: string
+  onGroupChanged: () => void
+}
+
+const UNIVERSES = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+
+function EditGroupRow({
+  group,
+  fixtures,
+  patchId,
+  onDone,
+}: {
+  group: Group
+  fixtures: Fixture[]
+  patchId: string
+  onDone: () => void
+}) {
+  const [position, setPosition] = useState(group.position)
+  const [universe, setUniverse] = useState(group.universe)
+  const [startingId, setStartingId] = useState(String(group.startingId))
+  const [startingAddress, setStartingAddress] = useState(String(group.startingAddress))
+  const [amount, setAmount] = useState(String(group.amount))
+  const [fixtureId, setFixtureId] = useState(group.fixture.id)
+  const [modeId, setModeId] = useState(group.mode.id)
+  const [availableModes, setAvailableModes] = useState<Mode[]>(group.fixture.modes ?? [])
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const f = fixtures.find((x) => x.id === fixtureId)
+    const modes = f?.modes ?? []
+    setAvailableModes(modes)
+    if (!modes.find((m) => m.id === modeId)) setModeId(modes[0]?.id ?? '')
+  }, [fixtureId, fixtures, modeId])
+
+  const handleSave = async () => {
+    setError(null)
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/patches/${patchId}/groups/${group.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          position,
+          universe,
+          startingId: Number(startingId),
+          startingAddress: Number(startingAddress),
+          amount: Number(amount),
+          fixtureId,
+          modeId,
+        }),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        setError(d?.error ?? 'Failed to save')
+        return
+      }
+      onDone()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <tr className="bg-blue-50 border-b border-gray-200">
+      <td colSpan={6} className="px-3 py-3">
+        {error && <div className="text-red-600 text-xs mb-2">{error}</div>}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 mb-2">
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">Position</label>
+            <input value={position} onChange={(e) => setPosition(e.target.value)} className="w-full border border-gray-300 rounded px-2 py-1 text-xs" />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">Universe</label>
+            <select value={universe} onChange={(e) => setUniverse(e.target.value)} aria-label="Universe" className="w-full border border-gray-300 rounded px-2 py-1 text-xs">
+              {UNIVERSES.map((u) => <option key={u}>{u}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">Start ID</label>
+            <input type="number" value={startingId} onChange={(e) => setStartingId(e.target.value)} min="1" className="w-full border border-gray-300 rounded px-2 py-1 text-xs" />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">Start Addr</label>
+            <input type="number" value={startingAddress} onChange={(e) => setStartingAddress(e.target.value)} min="1" max="512" className="w-full border border-gray-300 rounded px-2 py-1 text-xs" />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">Amount</label>
+            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} min="1" className="w-full border border-gray-300 rounded px-2 py-1 text-xs" />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">Fixture</label>
+            <select value={fixtureId} onChange={(e) => setFixtureId(e.target.value)} aria-label="Fixture" className="w-full border border-gray-300 rounded px-2 py-1 text-xs">
+              {fixtures.map((f) => <option key={f.id} value={f.id}>{f.manufacturer} {f.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">Mode</label>
+            <select value={modeId} onChange={(e) => setModeId(e.target.value)} aria-label="Mode" disabled={!fixtureId} className="w-full border border-gray-300 rounded px-2 py-1 text-xs disabled:opacity-50">
+              {availableModes.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.channelCount}ch)</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-3 py-1 rounded text-xs font-medium">
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button onClick={onDone} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-xs">Cancel</button>
+        </div>
+      </td>
+    </tr>
+  )
+}
+
+export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupChanged }: Props) {
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  const sorted = [...groups].sort((a, b) => a.order - b.order)
+
+  // Group by fixture + mode while preserving order of first occurrence
+  const seen = new Map<string, { fixture: Fixture; mode: Mode; groups: Group[] }>()
+  for (const g of sorted) {
+    const key = `${g.fixture.id}_${g.mode.id}`
+    if (!seen.has(key)) seen.set(key, { fixture: g.fixture, mode: g.mode, groups: [] })
+    seen.get(key)!.groups.push(g)
+  }
+
+  const handleDelete = async (groupId: string) => {
+    if (!confirm('Remove this group?')) return
+    await fetch(`/api/patches/${patchId}/groups/${groupId}`, { method: 'DELETE' })
+    onGroupChanged()
+  }
+
+  if (groups.length === 0) {
+    return (
+      <div className="px-4 py-10 text-center text-gray-400 text-sm">No groups added yet.</div>
+    )
+  }
+
+  return (
+    <div className="space-y-6 overflow-x-auto">
+      {Array.from(seen.values()).map(({ fixture, mode, groups: fGroups }) => {
+        const totalPcs = fGroups.reduce((sum, g) => sum + g.amount, 0)
+        const uniqueUniverses = new Set(fGroups.map((g) => g.universe)).size
+        const universeLabel = uniqueUniverses === 1 ? 'universe' : 'universes'
+
+        return (
+          <table key={`${fixture.id}_${mode.id}`} className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-gray-300 px-3 py-2 text-left font-bold w-[15%]">
+                  {fixture.manufacturer}
+                </th>
+                <th colSpan={2} className="border border-gray-300 px-3 py-2 text-left font-normal">
+                  {fixture.name}
+                </th>
+                <th className="border border-gray-300 px-3 py-2 text-left font-normal w-[22%]">
+                  <span className="font-bold">MODE:</span> {mode.name} {mode.channelCount} ch
+                </th>
+                <th colSpan={2} className="border border-gray-300 px-3 py-2 text-left font-normal w-[25%]">
+                  Total {totalPcs} pcs in {uniqueUniverses} {universeLabel}
+                </th>
+              </tr>
+              <tr className="bg-gray-50">
+                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">Pcs</th>
+                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">UNI</th>
+                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">ID</th>
+                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">Position</th>
+                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">Addresses</th>
+                <th className="border border-gray-300 px-3 py-2 text-xs w-[10%]"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {fGroups.map((g) => {
+                if (editingId === g.id) {
+                  return (
+                    <EditGroupRow
+                      key={g.id}
+                      group={g}
+                      fixtures={fixtures}
+                      patchId={patchId}
+                      onDone={() => { setEditingId(null); onGroupChanged() }}
+                    />
+                  )
+                }
+                const addresses = Array.from(
+                  { length: g.amount },
+                  (_, i) => g.startingAddress + i * g.mode.channelCount
+                )
+                const idEnd = g.startingId + g.amount - 1
+                const idRange = g.amount > 1 ? `${g.startingId}-${idEnd}` : `${g.startingId}`
+                return (
+                  <tr key={g.id} className="border-b border-gray-200 hover:bg-gray-50">
+                    <td className="border border-gray-300 px-3 py-2">{g.amount}</td>
+                    <td className="border border-gray-300 px-3 py-2 font-mono font-bold">{g.universe}</td>
+                    <td className="border border-gray-300 px-3 py-2 font-mono">{idRange}</td>
+                    <td className="border border-gray-300 px-3 py-2">{g.position}</td>
+                    <td className="border border-gray-300 px-3 py-2 font-mono text-xs">{addresses.join(', ')}</td>
+                    <td className="border border-gray-300 px-3 py-2">
+                      <div className="flex gap-1 justify-end">
+                        <button onClick={() => setEditingId(g.id)} className="text-blue-500 hover:text-blue-700 text-xs px-1.5 py-0.5 rounded hover:bg-blue-50">✏️</button>
+                        <button onClick={() => handleDelete(g.id)} className="text-red-500 hover:text-red-700 text-xs px-1.5 py-0.5 rounded hover:bg-red-50">✕</button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )
+      })}
+    </div>
+  )
+}

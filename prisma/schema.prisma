@@ -42,6 +42,7 @@ model FixtureMode {
 
 model Patch {
   id              String       @id @default(cuid())
+  slug            String       @unique
   title           String
   designerName    String
   designerEmail   String?
