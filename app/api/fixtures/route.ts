@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { isLocalhostRequest } from '@/lib/is-localhost'
 import { prisma } from '@/lib/prisma'
 
 export async function GET() {
@@ -12,15 +11,15 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isLocalhostRequest(request)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
   try {
     const { manufacturer, name, weight, powerConsumption, isGlobal, modes } = await request.json()
     const fixture = await prisma.fixture.create({
       data: {
         manufacturer, name, weight, powerConsumption,
         isGlobal: isGlobal ?? false,
-        createdById: session.user.id,
         modes: { create: modes ?? [] },
       },
       include: { modes: true },

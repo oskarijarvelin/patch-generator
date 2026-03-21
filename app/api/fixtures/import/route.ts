@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { isLocalhostRequest } from '@/lib/is-localhost'
 import { prisma } from '@/lib/prisma'
 
 type ModeInput = { name: string; channelCount: number }
@@ -53,8 +52,7 @@ function parseCsv(text: string): Record<string, string>[] {
 }
 
 async function importFixtures(
-  fixtures: FixtureInput[],
-  userId: string
+  fixtures: FixtureInput[]
 ): Promise<{ created: number; skipped: number }> {
   let created = 0
   let skipped = 0
@@ -76,7 +74,6 @@ async function importFixtures(
         weight: fixtureData.weight,
         powerConsumption: fixtureData.powerConsumption,
         isGlobal: fixtureData.isGlobal,
-        createdById: userId,
         modes: { create: fixtureData.modes },
       },
     })
@@ -87,14 +84,14 @@ async function importFixtures(
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isLocalhostRequest(request)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const contentType = request.headers.get('content-type') ?? ''
 
   try {
     if (contentType.includes('application/json')) {
-      // Import from AI lookup results (JSON array of fixture objects)
       const body = await request.json()
       let fixtures: FixtureInput[]
 
@@ -113,12 +110,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'No fixtures provided' }, { status: 400 })
       }
 
-      const result = await importFixtures(fixtures, session.user.id)
+      const result = await importFixtures(fixtures)
       return NextResponse.json(result)
     }
 
     if (contentType.includes('multipart/form-data')) {
-      // Import from CSV file
       const formData = await request.formData()
       const file = formData.get('file') as File | null
 
@@ -131,7 +127,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Empty or invalid CSV' }, { status: 400 })
       }
 
-      // Group rows by manufacturer+name
       const fixtureMap = new Map<string, FixtureInput>()
 
       for (const row of rows) {
@@ -158,7 +153,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      const result = await importFixtures(Array.from(fixtureMap.values()), session.user.id)
+      const result = await importFixtures(Array.from(fixtureMap.values()))
       return NextResponse.json(result)
     }
 

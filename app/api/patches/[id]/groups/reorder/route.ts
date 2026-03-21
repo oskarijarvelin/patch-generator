@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { isLocalhostRequest } from '@/lib/is-localhost'
 import { prisma } from '@/lib/prisma'
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions)
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isLocalhostRequest(request)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const { id: patchId } = await params
   const body = await request.json()
@@ -15,9 +15,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: 'orders must be an array' }, { status: 400 })
   }
 
-  // Verify patch exists and belongs to the current user
+  // Verify patch exists
   const patch = await prisma.patch.findFirst({
-    where: { id: patchId, userId: session.user.id },
+    where: { id: patchId },
     select: { id: true },
   })
   if (!patch) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -31,7 +31,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
   const typedOrders = orders as Array<{ id: string; order: number }>
 
-  // Verify all group IDs belong to this patch (security: prevent reordering groups from other patches)
+  // Verify all group IDs belong to this patch
   const groupIds = typedOrders.map(({ id }) => id)
   const matchingCount = await prisma.patchGroup.count({
     where: { id: { in: groupIds }, patchId },

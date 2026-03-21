@@ -1,8 +1,6 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { headers } from 'next/headers'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 
 type PatchRow = {
   id: string
@@ -14,11 +12,9 @@ type PatchRow = {
 }
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions)
-  if (!session) redirect('/auth/login')
+  const isLocalhost = (await headers()).get('x-is-localhost') === '1'
 
   const patches: PatchRow[] = await prisma.patch.findMany({
-    where: { userId: session.user.id },
     orderBy: { updatedAt: 'desc' },
     select: {
       id: true,
@@ -35,17 +31,25 @@ export default async function DashboardPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 mt-1">Welcome back, {session.user.name}</p>
+          <p className="text-gray-500 mt-1">All lighting patches</p>
         </div>
-        <Link href="/patches/new" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">+ New Patch</Link>
+        {isLocalhost && (
+          <Link href="/patches/new" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">+ New Patch</Link>
+        )}
       </div>
 
       {patches.length === 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
           <div className="text-4xl mb-3">📋</div>
           <h3 className="font-semibold text-gray-700 mb-2">No patches yet</h3>
-          <p className="text-gray-500 text-sm mb-4">Create your first lighting patch to get started.</p>
-          <Link href="/patches/new" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">Create Patch</Link>
+          {isLocalhost ? (
+            <>
+              <p className="text-gray-500 text-sm mb-4">Create your first lighting patch to get started.</p>
+              <Link href="/patches/new" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">Create Patch</Link>
+            </>
+          ) : (
+            <p className="text-gray-500 text-sm">No patches have been created yet.</p>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

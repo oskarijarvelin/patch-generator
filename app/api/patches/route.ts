@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { isLocalhostRequest } from '@/lib/is-localhost'
 import { prisma } from '@/lib/prisma'
 import { generateSlug } from '@/lib/slug'
 
 export async function GET() {
-  const session = await getServerSession(authOptions)
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const patches = await prisma.patch.findMany({
-    where: { userId: session.user.id },
     orderBy: { updatedAt: 'desc' },
     include: { groups: { include: { fixture: true, mode: true } } },
   })
@@ -16,23 +12,24 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isLocalhostRequest(request)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   try {
     const body = await request.json()
 
     const baseSlug = generateSlug(body.title)
 
-    // Ensure uniqueness for this user by appending a counter if needed
+    // Ensure uniqueness by appending a counter if needed
     let slug = baseSlug
     let counter = 1
-    while (await prisma.patch.findFirst({ where: { userId: session.user.id, slug } })) {
+    while (await prisma.patch.findFirst({ where: { slug } })) {
       slug = `${baseSlug}-${counter++}`
     }
 
     const patch = await prisma.patch.create({
-      data: { ...body, slug, userId: session.user.id },
+      data: { ...body, slug },
     })
 
     return NextResponse.json(patch, { status: 201 })

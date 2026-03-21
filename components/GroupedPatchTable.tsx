@@ -22,6 +22,7 @@ interface Props {
   fixtures: Fixture[]
   patchId: string
   onGroupChanged: () => void
+  isLocalhost?: boolean
 }
 
 const UNIVERSES = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
@@ -195,7 +196,7 @@ function EditGroupRow({
 
 type Section = { fixture: Fixture; mode: Mode; groups: Group[] }
 
-export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupChanged }: Props) {
+export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupChanged, isLocalhost = false }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [reordering, setReordering] = useState(false)
   const [reorderError, setReorderError] = useState<string | null>(null)
@@ -307,7 +308,7 @@ export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupCh
                     <td className="border border-gray-300 px-3 py-2 font-bold">
                       <div className="flex items-center justify-between gap-2">
                         <span>Total {totalPcs} pieces in {uniqueUniverses} {universeLabel}</span>
-                        {sections.length > 1 && (
+                        {isLocalhost && sections.length > 1 && (
                           <span className="flex gap-1 flex-shrink-0">
                             <button
                               onClick={() => handleMoveSection(sectionIdx, 'up')}
@@ -409,7 +410,7 @@ export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupCh
                               ))}
                             </span>
                             <span className="flex gap-1 flex-shrink-0">
-                              {fGroups.length > 1 && (
+                              {isLocalhost && fGroups.length > 1 && (
                                 <>
                                   <button
                                     onClick={() => handleMoveGroup(sectionIdx, groupIdx, 'up')}
@@ -425,8 +426,12 @@ export default function GroupedPatchTable({ groups, fixtures, patchId, onGroupCh
                                   >↓</button>
                                 </>
                               )}
-                              <button onClick={() => setEditingId(g.id)} className="text-blue-500 hover:text-blue-700 text-xs px-1.5 py-0.5 rounded hover:bg-blue-50">✏️</button>
-                              <button onClick={() => handleDelete(g.id)} className="text-red-500 hover:text-red-700 text-xs px-1.5 py-0.5 rounded hover:bg-red-50">✕</button>
+                              {isLocalhost && (
+                                <>
+                                  <button onClick={() => setEditingId(g.id)} className="text-blue-500 hover:text-blue-700 text-xs px-1.5 py-0.5 rounded hover:bg-blue-50">✏️</button>
+                                  <button onClick={() => handleDelete(g.id)} className="text-red-500 hover:text-red-700 text-xs px-1.5 py-0.5 rounded hover:bg-red-50">✕</button>
+                                </>
+                              )}
                             </span>
                           </div>
                         </td>
