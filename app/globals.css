@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  html {
+    font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  }
+}
+
 /* Prevent browser auto-detected telephone/address links from changing text color */
 a[href^="tel:"],
 a[x-apple-data-detectors] {
