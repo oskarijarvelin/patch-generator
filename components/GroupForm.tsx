@@ -22,6 +22,7 @@ export default function GroupForm({ fixtures, patchId, onGroupAdded }: Props) {
   const [modeId, setModeId] = useState('')
   const [modes, setModes] = useState<Mode[]>([])
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const f = fixtures.find((x) => x.id === fixtureId)
@@ -31,26 +32,51 @@ export default function GroupForm({ fixtures, patchId, onGroupAdded }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
     if (!position || !fixtureId || !modeId || !startingId || !startingAddress) return
+
     setSaving(true)
-    await fetch(`/api/patches/${patchId}/groups`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ position, universe, startingId: Number(startingId), startingAddress: Number(startingAddress), amount: Number(amount), fixtureId, modeId }),
-    })
-    setSaving(false)
-    setPosition('')
-    setStartingId('')
-    setStartingAddress('')
-    setAmount('1')
-    setFixtureId('')
-    setModeId('')
-    onGroupAdded()
+    try {
+      const res = await fetch(`/api/patches/${patchId}/groups`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          position,
+          universe,
+          startingId: Number(startingId),
+          startingAddress: Number(startingAddress),
+          amount: Number(amount),
+          fixtureId,
+          modeId,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({} as any))
+        setError(data?.error ?? 'Failed to add group')
+        return
+      }
+
+      setPosition('')
+      setStartingId('')
+      setStartingAddress('')
+      setAmount('1')
+      setFixtureId('')
+      setModeId('')
+      onGroupAdded()
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
     <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
       <h3 className="font-semibold text-gray-800 mb-3">Add Group</h3>
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded mb-3 text-sm">
+          {error}
+        </div>
+      )}
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-3">
           <div>
@@ -59,7 +85,12 @@ export default function GroupForm({ fixtures, patchId, onGroupAdded }: Props) {
           </div>
           <div>
             <label className="block text-xs text-gray-600 mb-1">Universe</label>
-            <select value={universe} onChange={(e) => setUniverse(e.target.value)} className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
+            <select
+              aria-label="Universe"
+              value={universe}
+              onChange={(e) => setUniverse(e.target.value)}
+              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+            >
               {UNIVERSES.map((u) => <option key={u}>{u}</option>)}
             </select>
           </div>
@@ -77,14 +108,27 @@ export default function GroupForm({ fixtures, patchId, onGroupAdded }: Props) {
           </div>
           <div>
             <label className="block text-xs text-gray-600 mb-1">Fixture</label>
-            <select value={fixtureId} onChange={(e) => setFixtureId(e.target.value)} required className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
+            <select
+              aria-label="Fixture"
+              value={fixtureId}
+              onChange={(e) => setFixtureId(e.target.value)}
+              required
+              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+            >
               <option value="">Select fixture</option>
               {fixtures.map((f) => <option key={f.id} value={f.id}>{f.manufacturer} {f.name}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-xs text-gray-600 mb-1">Mode</label>
-            <select value={modeId} onChange={(e) => setModeId(e.target.value)} required disabled={!fixtureId} className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm disabled:opacity-50">
+            <select
+              aria-label="Mode"
+              value={modeId}
+              onChange={(e) => setModeId(e.target.value)}
+              required
+              disabled={!fixtureId}
+              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm disabled:opacity-50"
+            >
               <option value="">Select mode</option>
               {modes.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.channelCount}ch)</option>)}
             </select>

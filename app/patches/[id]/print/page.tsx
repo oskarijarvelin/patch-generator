@@ -1,11 +1,31 @@
+import { headers } from 'next/headers'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import PatchTable from '@/components/PatchTable'
 import PatchCalculations from '@/components/PatchCalculations'
+import PrintButton from '@/components/PrintButton'
 
-export default async function PrintPage({ params }: { params: { id: string } }) {
+async function getIdFromReferer(): Promise<string | undefined> {
+  const h = await headers()
+  const referer = h.get('referer')
+  if (!referer) return undefined
+  try {
+    const { pathname } = new URL(referer)
+    const parts = pathname.split('/').filter(Boolean)
+    const patchesIndex = parts.indexOf('patches')
+    if (patchesIndex === -1) return undefined
+    return parts[patchesIndex + 1]
+  } catch {
+    return undefined
+  }
+}
+
+export default async function PrintPage({ params }: { params: { id?: string } }) {
+  const id = params?.id ?? (await getIdFromReferer())
+  if (!id) notFound()
+
   const patch = await prisma.patch.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { groups: { include: { fixture: true, mode: true }, orderBy: { order: 'asc' } } },
   })
   if (!patch) notFound()
@@ -41,7 +61,7 @@ export default async function PrintPage({ params }: { params: { id: string } }) 
       )}
 
       <div className="mt-8 print:hidden">
-        <button onClick={() => window.print()} className="bg-gray-800 hover:bg-gray-900 text-white px-6 py-2 rounded text-sm font-medium">🖨️ Print / Save PDF</button>
+        <PrintButton />
       </div>
     </div>
   )
