@@ -34,7 +34,7 @@ export default async function DashboardPage() {
       ) : (
         <div className="space-y-3">
           {patches.map((p) => (
-            <Link key={p.id} href={`/patches/${p.id}`} className="block bg-white rounded-lg border border-gray-200 p-4 hover:border-blue-300 hover:shadow-sm transition-all">
+            <Link key={p.id} href={`/patches/${p.slug}`} className="block bg-white rounded-lg border border-gray-200 p-4 hover:border-blue-300 hover:shadow-sm transition-all">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="font-semibold text-gray-900">{p.title}</div>
