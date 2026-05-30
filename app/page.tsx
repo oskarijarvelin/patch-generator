@@ -77,12 +77,26 @@ export default function Home() {
                 <span className="font-medium">{fileName}</span> —{" "}
                 {data.length} riviä ladattu
               </p>
-              <button
-                onClick={handleReset}
-                className="rounded-md bg-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-300"
-              >
-                Lataa uusi tiedosto
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleReset}
+                  className="rounded-md bg-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-300"
+                >
+                  Lataa uusi tiedosto
+                </button>
+                <button
+                  onClick={() => {
+                    localStorage.setItem("patchData", JSON.stringify(data));
+                    if (fileName) {
+                      localStorage.setItem("patchFileName", fileName);
+                    }
+                    window.location.href = "/generate";
+                  }}
+                  className="rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  Generoi PDF →
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto rounded-lg border border-gray-200">
