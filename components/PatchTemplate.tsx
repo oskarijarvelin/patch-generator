@@ -5,156 +5,244 @@ import {
   View,
   StyleSheet,
 } from "@react-pdf/renderer";
-import type { PatchRow } from "@/types/patch";
+import type { PatchGroup } from "@/types/patch";
 
-const HEADER_COLUMNS = [
-  { key: "Pcs" as const, label: "Pcs", width: "8%" },
-  { key: "UNI" as const, label: "UNI", width: "8%" },
-  { key: "ID" as const, label: "ID", width: "8%" },
-  { key: "Position" as const, label: "Position", width: "26%" },
-  { key: "Addresses" as const, label: "Addresses", width: "26%" },
-  { key: "MODE" as const, label: "MODE", width: "12%" },
-  { key: "Total" as const, label: "Total", width: "12%" },
+/* ------------------------------------------------------------------ */
+/*  Column definitions for the data table                             */
+/* ------------------------------------------------------------------ */
+
+const DATA_COLUMNS = [
+  { key: "pcs" as const, label: "Pcs", width: "10%" },
+  { key: "uni" as const, label: "UNI", width: "10%" },
+  { key: "idRange" as const, label: "ID", width: "15%" },
+  { key: "position" as const, label: "Position", width: "15%" },
+  { key: "addresses" as const, label: "Addresses", width: "50%" },
 ];
+
+/* ------------------------------------------------------------------ */
+/*  Styles                                                            */
+/* ------------------------------------------------------------------ */
+
+const border = "1pt solid #000";
 
 const styles = StyleSheet.create({
   page: {
-    padding: 30,
+    paddingTop: 40,
+    paddingBottom: 50,
+    paddingHorizontal: 40,
     fontSize: 9,
     fontFamily: "Helvetica",
   },
+
+  /* Page header */
+  pageHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  dateText: {
+    fontSize: 9,
+    fontStyle: "italic",
+  },
+  contactBlock: {
+    alignItems: "flex-end",
+  },
+  contactName: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+  },
+  contactDetail: {
+    fontSize: 8,
+  },
+
+  /* Title */
   title: {
-    fontSize: 18,
+    fontSize: 36,
     fontFamily: "Helvetica-Bold",
     textAlign: "center",
     marginBottom: 4,
+    letterSpacing: 2,
   },
   subtitle: {
-    fontSize: 10,
-    textAlign: "center",
-    color: "#555",
-    marginBottom: 20,
-  },
-  groupHeader: {
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: "Helvetica-Bold",
-    backgroundColor: "#1a1a2e",
-    color: "#ffffff",
-    padding: 6,
-    marginTop: 10,
-    marginBottom: 0,
+    textAlign: "center",
+    marginBottom: 24,
   },
-  tableHeader: {
-    flexDirection: "row" as const,
-    backgroundColor: "#e8e8e8",
-    borderBottomWidth: 1,
-    borderBottomColor: "#999",
+
+  /* Fixture group */
+  groupContainer: {
+    marginBottom: 16,
+  },
+
+  /* Group header row (fixture name | MODE | Total) */
+  groupHeaderRow: {
+    flexDirection: "row",
+    borderTop: border,
+    borderLeft: border,
+    borderRight: border,
+    borderBottom: border,
+  },
+  groupHeaderFixture: {
+    width: "35%",
+    padding: 5,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10,
+    borderRight: border,
+  },
+  groupHeaderMode: {
+    width: "30%",
+    padding: 5,
+    fontSize: 9,
+    borderRight: border,
+  },
+  groupHeaderTotal: {
+    width: "35%",
+    padding: 5,
+    fontSize: 9,
+  },
+
+  /* Table header */
+  tableHeaderRow: {
+    flexDirection: "row",
+    borderLeft: border,
+    borderRight: border,
+    borderBottom: border,
   },
   tableHeaderCell: {
     padding: 4,
     fontFamily: "Helvetica-Bold",
     fontSize: 8,
+    borderRight: border,
   },
+  tableHeaderCellLast: {
+    padding: 4,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 8,
+  },
+
+  /* Data rows */
   tableRow: {
-    flexDirection: "row" as const,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#ddd",
-  },
-  tableRowAlt: {
-    flexDirection: "row" as const,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#ddd",
-    backgroundColor: "#f9f9f9",
+    flexDirection: "row",
+    borderLeft: border,
+    borderRight: border,
+    borderBottom: border,
   },
   tableCell: {
     padding: 4,
     fontSize: 8,
+    borderRight: border,
   },
+  tableCellLast: {
+    padding: 4,
+    fontSize: 8,
+  },
+
+  /* Footer */
   footer: {
-    position: "absolute" as const,
+    position: "absolute",
     bottom: 20,
-    left: 30,
-    right: 30,
-    flexDirection: "row" as const,
-    justifyContent: "space-between" as const,
-    fontSize: 7,
-    color: "#888",
-    borderTopWidth: 0.5,
-    borderTopColor: "#ccc",
-    paddingTop: 6,
-  },
-  pageNumber: {
-    fontSize: 7,
-    color: "#888",
+    left: 40,
+    right: 40,
+    fontSize: 8,
+    color: "#555",
+    textAlign: "left",
   },
 });
 
-/**
- * Group PatchRows by the Fixture column value.
- */
-function groupByFixture(data: PatchRow[]): Map<string, PatchRow[]> {
-  const groups = new Map<string, PatchRow[]>();
-  for (const row of data) {
-    const fixture = row.Fixture || "Tuntematon";
-    if (!groups.has(fixture)) {
-      groups.set(fixture, []);
-    }
-    groups.get(fixture)!.push(row);
-  }
-  return groups;
-}
+/* ------------------------------------------------------------------ */
+/*  Component                                                         */
+/* ------------------------------------------------------------------ */
 
 interface PatchTemplateProps {
-  data: PatchRow[];
+  data: PatchGroup[];
   eventName?: string;
   date?: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
 }
 
 export default function PatchTemplate({
   data,
   eventName = "PATCH",
   date,
+  contactName,
+  contactPhone,
+  contactEmail,
 }: PatchTemplateProps) {
-  const groups = groupByFixture(data);
   const displayDate = date || new Date().toLocaleDateString("fi-FI");
+  const hasContact = contactName || contactPhone || contactEmail;
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
+        {/* Page header: date left, contact right */}
+        <View style={styles.pageHeader} fixed>
+          <Text style={styles.dateText}>Updated {displayDate}</Text>
+          {hasContact && (
+            <View style={styles.contactBlock}>
+              {contactName && (
+                <Text style={styles.contactName}>{contactName}</Text>
+              )}
+              {contactPhone && (
+                <Text style={styles.contactDetail}>{contactPhone}</Text>
+              )}
+              {contactEmail && (
+                <Text style={styles.contactDetail}>{contactEmail}</Text>
+              )}
+            </View>
+          )}
+        </View>
+
         {/* Title */}
-        <Text style={styles.title}>
-          PATCH — {eventName}
-        </Text>
-        <Text style={styles.subtitle}>{displayDate}</Text>
+        <Text style={styles.title}>PATCH</Text>
+        <Text style={styles.subtitle}>{eventName}</Text>
 
         {/* Fixture groups */}
-        {Array.from(groups.entries()).map(([fixture, rows]) => (
-          <View key={fixture} wrap={false}>
+        {data.map((group, gi) => (
+          <View key={gi} style={styles.groupContainer} wrap={false}>
             {/* Group header */}
-            <Text style={styles.groupHeader}>{fixture}</Text>
+            <View style={styles.groupHeaderRow}>
+              <Text style={styles.groupHeaderFixture}>{group.fixture}</Text>
+              <Text style={styles.groupHeaderMode}>
+                MODE: {group.mode}
+              </Text>
+              <Text style={styles.groupHeaderTotal}>
+                Total {group.totalPcs} pcs in {group.universeCount}{" "}
+                {group.universeCount === 1 ? "universe" : "universes"}
+              </Text>
+            </View>
 
             {/* Table header */}
-            <View style={styles.tableHeader}>
-              {HEADER_COLUMNS.map((col) => (
+            <View style={styles.tableHeaderRow}>
+              {DATA_COLUMNS.map((col, ci) => (
                 <Text
                   key={col.key}
-                  style={[styles.tableHeaderCell, { width: col.width }]}
+                  style={[
+                    ci < DATA_COLUMNS.length - 1
+                      ? styles.tableHeaderCell
+                      : styles.tableHeaderCellLast,
+                    { width: col.width },
+                  ]}
                 >
                   {col.label}
                 </Text>
               ))}
             </View>
 
-            {/* Table rows */}
-            {rows.map((row, i) => (
-              <View
-                key={i}
-                style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}
-              >
-                {HEADER_COLUMNS.map((col) => (
+            {/* Data rows */}
+            {group.rows.map((row, ri) => (
+              <View key={ri} style={styles.tableRow}>
+                {DATA_COLUMNS.map((col, ci) => (
                   <Text
                     key={col.key}
-                    style={[styles.tableCell, { width: col.width }]}
+                    style={[
+                      ci < DATA_COLUMNS.length - 1
+                        ? styles.tableCell
+                        : styles.tableCellLast,
+                      { width: col.width },
+                    ]}
                   >
                     {row[col.key]}
                   </Text>
@@ -166,14 +254,11 @@ export default function PatchTemplate({
 
         {/* Footer */}
         <View style={styles.footer} fixed>
-          <Text>Patch Generator — {eventName}</Text>
           <Text
-            style={styles.pageNumber}
             render={({ pageNumber, totalPages }) =>
-              `Sivu ${pageNumber} / ${totalPages}`
+              `Page ${pageNumber} of ${totalPages}`
             }
           />
-          <Text>{displayDate}</Text>
         </View>
       </Page>
     </Document>

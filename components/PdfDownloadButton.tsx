@@ -2,13 +2,16 @@
 
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import PatchTemplate from "@/components/PatchTemplate";
-import type { PatchRow } from "@/types/patch";
+import type { PatchGroup } from "@/types/patch";
 
 interface PdfDownloadButtonProps {
-  data: PatchRow[];
+  data: PatchGroup[];
   eventName: string;
   date: string;
   fileName: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
 }
 
 export default function PdfDownloadButton({
@@ -16,11 +19,21 @@ export default function PdfDownloadButton({
   eventName,
   date,
   fileName,
+  contactName,
+  contactPhone,
+  contactEmail,
 }: PdfDownloadButtonProps) {
   return (
     <PDFDownloadLink
       document={
-        <PatchTemplate data={data} eventName={eventName} date={date} />
+        <PatchTemplate
+          data={data}
+          eventName={eventName}
+          date={date}
+          contactName={contactName}
+          contactPhone={contactPhone}
+          contactEmail={contactEmail}
+        />
       }
       fileName={fileName}
     >

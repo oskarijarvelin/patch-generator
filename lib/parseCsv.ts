@@ -2,9 +2,9 @@ import Papa from "papaparse";
 import {
   CAPTURE_REQUIRED_COLUMNS,
   type CaptureRow,
-  type PatchRow,
   type ParseOutcome,
 } from "@/types/patch";
+import { aggregateCapture } from "@/lib/aggregatePatch";
 
 /**
  * Validate that the CSV header row contains the required Capture columns.
@@ -22,23 +22,7 @@ function validateColumns(fields: string[]): string | null {
 }
 
 /**
- * Transform a raw Capture CSV row into a PatchRow for display / PDF.
- */
-function toPatchRow(raw: CaptureRow): PatchRow {
-  return {
-    Fixture: raw.Fixture || "",
-    Pcs: "1",
-    UNI: raw["DMX Universe"] || "",
-    ID: raw.Unit || "",
-    Position: raw.Location || "",
-    Addresses: raw["DMX Channel"] || "",
-    MODE: raw["DMX Mode"] || "",
-    Total: raw["DMX Channels"] || "",
-  };
-}
-
-/**
- * Parse a Capture CSV file and transform it into PatchRow[].
+ * Parse a Capture CSV file and aggregate it into PatchGroup[].
  */
 export function parseCsvFile(file: File): Promise<ParseOutcome> {
   return new Promise((resolve) => {
@@ -72,8 +56,8 @@ export function parseCsvFile(file: File): Promise<ParseOutcome> {
           return;
         }
 
-        const patchRows = results.data.map(toPatchRow);
-        resolve({ success: true, data: patchRows });
+        const groups = aggregateCapture(results.data);
+        resolve({ success: true, data: groups });
       },
       error(err) {
         resolve({

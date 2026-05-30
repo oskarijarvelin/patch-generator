@@ -4,12 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import FileUpload from "@/components/FileUpload";
 import { parseCsvFile } from "@/lib/parseCsv";
-import type { PatchRow } from "@/types/patch";
-import { PATCH_COLUMNS } from "@/types/patch";
+import type { PatchGroup } from "@/types/patch";
 
 export default function Home() {
   const router = useRouter();
-  const [data, setData] = useState<PatchRow[] | null>(null);
+  const [data, setData] = useState<PatchGroup[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -36,6 +35,10 @@ export default function Home() {
     setError(null);
     setFileName(null);
   }
+
+  const totalFixtures = data
+    ? data.reduce((sum, g) => sum + g.totalPcs, 0)
+    : 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -77,7 +80,7 @@ export default function Home() {
             <div className="mb-4 flex items-center justify-between">
               <p className="text-sm text-gray-600">
                 <span className="font-medium">{fileName}</span> —{" "}
-                {data.length} riviä ladattu
+                {totalFixtures} valaisinta, {data.length} ryhmää
               </p>
               <div className="flex gap-2">
                 <button
@@ -101,32 +104,71 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-gray-200">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-100">
-                  <tr>
-                    {PATCH_COLUMNS.map((col) => (
-                      <th
-                        key={col}
-                        className="px-4 py-2 text-left font-semibold text-gray-700"
-                      >
-                        {col}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {data.map((row, i) => (
-                    <tr key={i} className="hover:bg-gray-50">
-                      {PATCH_COLUMNS.map((col) => (
-                        <td key={col} className="whitespace-nowrap px-4 py-2 text-gray-600">
-                          {row[col]}
-                        </td>
+            <div className="space-y-4">
+              {data.map((group, gi) => (
+                <div
+                  key={gi}
+                  className="overflow-x-auto rounded-lg border border-gray-200"
+                >
+                  {/* Group header */}
+                  <div className="flex items-center gap-4 bg-gray-100 px-4 py-2">
+                    <span className="font-semibold text-gray-900">
+                      {group.fixture}
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      MODE: {group.mode}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      {group.totalPcs} pcs / {group.universeCount}{" "}
+                      {group.universeCount === 1 ? "universe" : "universes"}
+                    </span>
+                  </div>
+
+                  {/* Table */}
+                  <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left font-semibold text-gray-700">
+                          Pcs
+                        </th>
+                        <th className="px-4 py-2 text-left font-semibold text-gray-700">
+                          UNI
+                        </th>
+                        <th className="px-4 py-2 text-left font-semibold text-gray-700">
+                          ID
+                        </th>
+                        <th className="px-4 py-2 text-left font-semibold text-gray-700">
+                          Position
+                        </th>
+                        <th className="px-4 py-2 text-left font-semibold text-gray-700">
+                          Addresses
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {group.rows.map((row, ri) => (
+                        <tr key={ri} className="hover:bg-gray-50">
+                          <td className="whitespace-nowrap px-4 py-2 text-gray-600">
+                            {row.pcs}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-2 text-gray-600">
+                            {row.uni}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-2 text-gray-600">
+                            {row.idRange}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-2 text-gray-600">
+                            {row.position}
+                          </td>
+                          <td className="px-4 py-2 text-gray-600">
+                            {row.addresses}
+                          </td>
+                        </tr>
                       ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                    </tbody>
+                  </table>
+                </div>
+              ))}
             </div>
           </div>
         )}
