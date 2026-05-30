@@ -27,11 +27,18 @@ function formatModeName(raw: string): string {
  * a comma-separated list of DMX start addresses.
  */
 export function aggregateCapture(rows: CaptureRow[]): PatchGroup[] {
+  // Sort all raw rows by Unit number ascending before any grouping
+  const sortedRows = [...rows].sort((a, b) => {
+    const aUnit = parseInt(a.Unit, 10) || 0;
+    const bUnit = parseInt(b.Unit, 10) || 0;
+    return aUnit - bUnit;
+  });
+
   // Group by fixture name, preserving order of first appearance
   const fixtureOrder: string[] = [];
   const byFixture = new Map<string, CaptureRow[]>();
 
-  for (const row of rows) {
+  for (const row of sortedRows) {
     const key = row.Fixture || "Unknown";
     if (!byFixture.has(key)) {
       byFixture.set(key, []);
@@ -62,6 +69,9 @@ export function aggregateCapture(rows: CaptureRow[]): PatchGroup[] {
 
     for (const subKey of subOrder) {
       const subRows = subGroups.get(subKey)!;
+
+      // Sort sub-rows by Unit number to ensure correct ID range and address order
+      subRows.sort((a, b) => (parseInt(a.Unit, 10) || 0) - (parseInt(b.Unit, 10) || 0));
 
       const units = subRows
         .map((r) => parseInt(r.Unit, 10))

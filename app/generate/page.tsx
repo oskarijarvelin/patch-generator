@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import type { PatchGroup } from "@/types/patch";
@@ -11,38 +11,49 @@ const PdfDownloadButton = dynamic(
 );
 
 export default function GeneratePage() {
-  const [data] = useState<PatchGroup[] | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const stored = localStorage.getItem("patchData");
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [data, setData] = useState<PatchGroup[] | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
   const [eventName, setEventName] = useState("");
-  const [date, setDate] = useState(() =>
-    typeof window !== "undefined"
-      ? new Date().toLocaleDateString("fi-FI")
-      : ""
-  );
+  const [date, setDate] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
-  const [fileName] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
+  const [fixtureNames, setFixtureNames] = useState<Record<string, string>>({});
+  const [pdfOutputName, setPdfOutputName] = useState("");
+  const [pdfOutputNameEdited, setPdfOutputNameEdited] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
     try {
-      return localStorage.getItem("patchFileName");
+      const stored = localStorage.getItem("patchData");
+      const parsed: PatchGroup[] | null = stored ? JSON.parse(stored) : null;
+      setData(parsed);
+      if (parsed) {
+        const names: Record<string, string> = {};
+        parsed.forEach((g) => { names[g.fixture] = g.fixture; });
+        setFixtureNames(names);
+      }
     } catch {
-      return null;
+      setData(null);
     }
-  });
+    try {
+      setFileName(localStorage.getItem("patchFileName"));
+    } catch {
+      setFileName(null);
+    }
+    setDate(new Date().toLocaleDateString("fi-FI"));
+    setHydrated(true);
+  }, []);
 
   const router = useRouter();
 
   const handleBack = useCallback(() => {
     router.push("/");
   }, [router]);
+
+  if (!hydrated) {
+    return null;
+  }
 
   if (!data) {
     return (
@@ -63,11 +74,15 @@ export default function GeneratePage() {
     );
   }
 
-  const pdfFileName = fileName
-    ? fileName.replace(/\.csv$/i, "") + "-patch.pdf"
-    : "patch.pdf";
+  const pdfFileName = `${pdfOutputName || (eventName ? `Patch - ${eventName}` : "Patch")}.pdf`;
 
   const totalFixtures = data.reduce((sum, g) => sum + g.totalPcs, 0);
+
+  // Apply custom fixture names
+  const displayData = data.map((g) => ({
+    ...g,
+    fixture: fixtureNames[g.fixture] ?? g.fixture,
+  }));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -96,9 +111,14 @@ export default function GeneratePage() {
                 id="eventName"
                 type="text"
                 value={eventName}
-                onChange={(e) => setEventName(e.target.value)}
+                onChange={(e) => {
+                  setEventName(e.target.value);
+                  if (!pdfOutputNameEdited) {
+                    setPdfOutputName(e.target.value ? `Patch - ${e.target.value}` : "Patch");
+                  }
+                }}
                 placeholder="esim. Qstock 2026 - Rytmiranta"
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
             <div>
@@ -113,8 +133,43 @@ export default function GeneratePage() {
                 type="text"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <label
+              htmlFor="pdfOutputName"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Tiedostonimi
+            </label>
+            <div className="mt-1 flex items-center gap-2">
+              <input
+                id="pdfOutputName"
+                type="text"
+                value={pdfOutputName}
+                onChange={(e) => {
+                  setPdfOutputName(e.target.value);
+                  setPdfOutputNameEdited(true);
+                }}
+                placeholder="Patch - Tapahtuman nimi"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <span className="shrink-0 text-sm text-gray-400">.pdf</span>
+              {pdfOutputNameEdited && (
+                <button
+                  onClick={() => {
+                    setPdfOutputName(eventName ? `Patch - ${eventName}` : "Patch");
+                    setPdfOutputNameEdited(false);
+                  }}
+                  className="shrink-0 text-xs text-gray-400 hover:text-gray-600"
+                  title="Palauta automaattinen nimi"
+                >
+                  ↺
+                </button>
+              )}
             </div>
           </div>
 
@@ -134,7 +189,7 @@ export default function GeneratePage() {
                 type="text"
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
             <div>
@@ -149,7 +204,7 @@ export default function GeneratePage() {
                 type="text"
                 value={contactPhone}
                 onChange={(e) => setContactPhone(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
             <div>
@@ -164,7 +219,7 @@ export default function GeneratePage() {
                 type="text"
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -175,20 +230,41 @@ export default function GeneratePage() {
           <h2 className="mb-4 text-lg font-semibold text-gray-800">
             Data ({totalFixtures} valaisinta, {data.length} ryhmää)
           </h2>
-          <div className="max-h-72 space-y-3 overflow-auto">
+          <div className="space-y-4">
             {data.map((group, gi) => (
-              <div key={gi} className="rounded border border-gray-100">
-                <div className="flex items-center gap-3 bg-gray-50 px-3 py-1.5 text-xs">
-                  <span className="font-semibold text-gray-800">
-                    {group.fixture}
-                  </span>
-                  <span className="text-gray-500">
-                    MODE: {group.mode}
-                  </span>
-                  <span className="text-gray-400">
-                    {group.totalPcs} pcs
-                  </span>
+              <div key={gi} className="rounded border border-gray-200">
+                {/* Fixture name editor */}
+                <div className="flex items-center gap-3 border-b border-gray-100 bg-gray-50 px-3 py-2">
+                  <span className="shrink-0 text-xs font-medium text-gray-400">Nimi PDF:ssä:</span>
+                  <input
+                    type="text"
+                    aria-label={`Fixture nimi PDF:ssä: ${group.fixture}`}
+                    title={`Fixture nimi PDF:ssä`}
+                    value={fixtureNames[group.fixture] ?? group.fixture}
+                    onChange={(e) =>
+                      setFixtureNames((prev) => ({ ...prev, [group.fixture]: e.target.value }))
+                    }
+                    className="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1 text-sm font-semibold text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  {fixtureNames[group.fixture] !== group.fixture && (
+                    <button
+                      onClick={() =>
+                        setFixtureNames((prev) => ({ ...prev, [group.fixture]: group.fixture }))
+                      }
+                      className="shrink-0 text-xs text-gray-400 hover:text-gray-600"
+                      title="Palauta alkuperäinen"
+                    >
+                      ↺ Palauta
+                    </button>
+                  )}
+                  <span className="shrink-0 text-xs text-gray-400">MODE: {group.mode}</span>
+                  <span className="shrink-0 text-xs text-gray-400">{group.totalPcs} pcs</span>
                 </div>
+                {fixtureNames[group.fixture] !== group.fixture && (
+                  <div className="bg-amber-50 px-3 py-1 text-xs text-amber-700">
+                    Alkuperäinen: <span className="font-medium">{group.fixture}</span>
+                  </div>
+                )}
                 <table className="min-w-full divide-y divide-gray-100 text-xs">
                   <thead className="bg-gray-50">
                     <tr>
@@ -226,7 +302,7 @@ export default function GeneratePage() {
           </button>
 
           <PdfDownloadButton
-            data={data}
+            data={displayData}
             eventName={eventName}
             date={date}
             fileName={pdfFileName}

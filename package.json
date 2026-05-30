@@ -9,6 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@fontsource-variable/open-sans": "^5.2.7",
+    "@fontsource-variable/roboto-condensed": "^5.2.8",
+    "@fontsource/open-sans": "^5.2.7",
+    "@fontsource/roboto-condensed": "^5.2.8",
     "@react-pdf/renderer": "^4.5.1",
     "next": "16.2.6",
     "papaparse": "^5.5.3",

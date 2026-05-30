@@ -4,8 +4,32 @@ import {
   Text,
   View,
   StyleSheet,
+  Font,
 } from "@react-pdf/renderer";
 import type { PatchGroup } from "@/types/patch";
+
+const BASE =
+  typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+
+Font.register({
+  family: "RobotoCondensed",
+  fonts: [
+    { src: `${BASE}/fonts/Roboto_Condensed/static/RobotoCondensed-Regular.ttf`, fontWeight: "normal" },
+    { src: `${BASE}/fonts/Roboto_Condensed/static/RobotoCondensed-Bold.ttf`, fontWeight: "bold" },
+    { src: `${BASE}/fonts/Roboto_Condensed/static/RobotoCondensed-Italic.ttf`, fontWeight: "normal", fontStyle: "italic" },
+    { src: `${BASE}/fonts/Roboto_Condensed/static/RobotoCondensed-BoldItalic.ttf`, fontWeight: "bold", fontStyle: "italic" },
+  ],
+});
+
+Font.register({
+  family: "OpenSans",
+  fonts: [
+    { src: `${BASE}/fonts/Open_Sans/static/OpenSans-Regular.ttf`, fontWeight: "normal" },
+    { src: `${BASE}/fonts/Open_Sans/static/OpenSans-Bold.ttf`, fontWeight: "bold" },
+    { src: `${BASE}/fonts/Open_Sans/static/OpenSans-Italic.ttf`, fontWeight: "normal", fontStyle: "italic" },
+    { src: `${BASE}/fonts/Open_Sans/static/OpenSans-BoldItalic.ttf`, fontWeight: "bold", fontStyle: "italic" },
+  ],
+});
 
 /* ------------------------------------------------------------------ */
 /*  Column definitions for the data table                             */
@@ -31,7 +55,8 @@ const styles = StyleSheet.create({
     paddingBottom: 50,
     paddingHorizontal: 40,
     fontSize: 9,
-    fontFamily: "Helvetica",
+    fontFamily: "OpenSans",
+    color: "#000000",
   },
 
   /* Page header */
@@ -42,6 +67,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 9,
+    fontFamily: "OpenSans",
     fontStyle: "italic",
   },
   contactBlock: {
@@ -49,7 +75,8 @@ const styles = StyleSheet.create({
   },
   contactName: {
     fontSize: 9,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "OpenSans",
+    fontWeight: "bold",
   },
   contactDetail: {
     fontSize: 8,
@@ -58,14 +85,16 @@ const styles = StyleSheet.create({
   /* Title */
   title: {
     fontSize: 36,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "RobotoCondensed",
+    fontWeight: "bold",
     textAlign: "center",
     marginBottom: 4,
     letterSpacing: 2,
   },
   subtitle: {
     fontSize: 14,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "RobotoCondensed",
+    fontWeight: "bold",
     textAlign: "center",
     marginBottom: 24,
   },
@@ -86,7 +115,8 @@ const styles = StyleSheet.create({
   groupHeaderFixture: {
     width: "35%",
     padding: 5,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "RobotoCondensed",
+    fontWeight: "bold",
     fontSize: 10,
     borderRight: border,
   },
@@ -100,6 +130,8 @@ const styles = StyleSheet.create({
     width: "35%",
     padding: 5,
     fontSize: 9,
+    fontFamily: "RobotoCondensed",
+    fontWeight: "bold",
   },
 
   /* Table header */
@@ -111,13 +143,15 @@ const styles = StyleSheet.create({
   },
   tableHeaderCell: {
     padding: 4,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "RobotoCondensed",
+    fontWeight: "bold",
     fontSize: 8,
     borderRight: border,
   },
   tableHeaderCellLast: {
     padding: 4,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "RobotoCondensed",
+    fontWeight: "bold",
     fontSize: 8,
   },
 
@@ -145,7 +179,7 @@ const styles = StyleSheet.create({
     left: 40,
     right: 40,
     fontSize: 8,
-    color: "#555",
+    color: "#555555",
     textAlign: "left",
   },
 });
@@ -206,7 +240,7 @@ export default function PatchTemplate({
             <View style={styles.groupHeaderRow}>
               <Text style={styles.groupHeaderFixture}>{group.fixture}</Text>
               <Text style={styles.groupHeaderMode}>
-                MODE: {group.mode}
+                <Text style={{ fontFamily: "RobotoCondensed", fontWeight: "bold" }}>MODE: </Text>{group.mode}
               </Text>
               <Text style={styles.groupHeaderTotal}>
                 Total {group.totalPcs} pcs in {group.universeCount}{" "}

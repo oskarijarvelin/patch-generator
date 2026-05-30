@@ -1,5 +1,18 @@
 import type { Metadata } from "next";
+import { Roboto_Condensed, Open_Sans } from "next/font/google";
 import "./globals.css";
+
+const robotoCondensed = Roboto_Condensed({
+  subsets: ["latin"],
+  variable: "--font-heading",
+  display: "swap",
+});
+
+const openSans = Open_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Patch Generator",
@@ -13,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fi" className="h-full antialiased">
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className={`${robotoCondensed.variable} ${openSans.variable} min-h-full flex flex-col font-sans`}>{children}</body>
     </html>
   );
 }
