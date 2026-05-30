@@ -9,12 +9,14 @@ interface FileUploadProps {
 
 export default function FileUpload({ onFileSelected, disabled }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback(
     (file: File) => {
+      setFileError(null);
       if (!file.name.toLowerCase().endsWith(".csv")) {
-        alert("Valitse CSV-tiedosto (.csv).");
+        setFileError("Valitse CSV-tiedosto (.csv).");
         return;
       }
       onFileSelected(file);
@@ -88,6 +90,9 @@ export default function FileUpload({ onFileSelected, disabled }: FileUploadProps
       <p className="text-xs text-gray-400">
         Tuettu muoto: .csv (sarakkeet: Fixture, Pcs, UNI, ID, Position, Addresses, MODE, Total)
       </p>
+      {fileError && (
+        <p className="text-sm font-medium text-red-600">{fileError}</p>
+      )}
       <input
         ref={inputRef}
         type="file"
