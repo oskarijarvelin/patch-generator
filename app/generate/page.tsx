@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import type { PatchRow } from "@/types/patch";
 import { PATCH_COLUMNS } from "@/types/patch";
@@ -35,9 +36,11 @@ export default function GeneratePage() {
     }
   });
 
+  const router = useRouter();
+
   const handleBack = useCallback(() => {
-    window.location.href = "/";
-  }, []);
+    router.push("/");
+  }, [router]);
 
   if (!data) {
     return (

@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import FileUpload from "@/components/FileUpload";
 import { parseCsvFile } from "@/lib/parseCsv";
 import type { PatchRow } from "@/types/patch";
 import { PATCH_COLUMNS } from "@/types/patch";
 
 export default function Home() {
+  const router = useRouter();
   const [data, setData] = useState<PatchRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -90,7 +92,7 @@ export default function Home() {
                     if (fileName) {
                       localStorage.setItem("patchFileName", fileName);
                     }
-                    window.location.href = "/generate";
+                    router.push("/generate");
                   }}
                   className="rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
                 >
