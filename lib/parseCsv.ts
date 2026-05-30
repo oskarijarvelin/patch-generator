@@ -1,15 +1,20 @@
 import Papa from "papaparse";
-import { PATCH_COLUMNS, type PatchRow, type ParseOutcome } from "@/types/patch";
+import {
+  CAPTURE_REQUIRED_COLUMNS,
+  type CaptureRow,
+  type PatchRow,
+  type ParseOutcome,
+} from "@/types/patch";
 
 /**
- * Validate that the CSV header row contains exactly the expected columns.
+ * Validate that the CSV header row contains the required Capture columns.
  */
 function validateColumns(fields: string[]): string | null {
   const trimmed = fields.map((f) => f.trim());
 
-  for (const expected of PATCH_COLUMNS) {
+  for (const expected of CAPTURE_REQUIRED_COLUMNS) {
     if (!trimmed.includes(expected)) {
-      return `Puuttuva sarake: "${expected}". Odotetut sarakkeet: ${PATCH_COLUMNS.join(", ")}`;
+      return `Puuttuva sarake: "${expected}". Tiedoston tulee olla Capture-ohjelmasta viety CSV.`;
     }
   }
 
@@ -17,11 +22,27 @@ function validateColumns(fields: string[]): string | null {
 }
 
 /**
- * Parse a CSV file and validate its structure against the expected PATCH schema.
+ * Transform a raw Capture CSV row into a PatchRow for display / PDF.
+ */
+function toPatchRow(raw: CaptureRow): PatchRow {
+  return {
+    Fixture: raw.Fixture || "",
+    Pcs: "1",
+    UNI: raw["DMX Universe"] || "",
+    ID: raw.Unit || "",
+    Position: raw.Location || "",
+    Addresses: raw["DMX Channel"] || "",
+    MODE: raw["DMX Mode"] || "",
+    Total: raw["DMX Channels"] || "",
+  };
+}
+
+/**
+ * Parse a Capture CSV file and transform it into PatchRow[].
  */
 export function parseCsvFile(file: File): Promise<ParseOutcome> {
   return new Promise((resolve) => {
-    Papa.parse<PatchRow>(file, {
+    Papa.parse<CaptureRow>(file, {
       header: true,
       skipEmptyLines: true,
       complete(results) {
@@ -51,7 +72,8 @@ export function parseCsvFile(file: File): Promise<ParseOutcome> {
           return;
         }
 
-        resolve({ success: true, data: results.data });
+        const patchRows = results.data.map(toPatchRow);
+        resolve({ success: true, data: patchRows });
       },
       error(err) {
         resolve({

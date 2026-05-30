@@ -88,7 +88,7 @@ export default function FileUpload({ onFileSelected, disabled }: FileUploadProps
         <span className="font-semibold text-blue-600">Klikkaa</span> tai vedä ja pudota CSV-tiedosto tähän
       </p>
       <p className="text-xs text-gray-400">
-        Tuettu muoto: .csv (sarakkeet: Fixture, Pcs, UNI, ID, Position, Addresses, MODE, Total)
+        Tuettu muoto: Capture-ohjelmasta viety .csv-tiedosto
       </p>
       {fileError && (
         <p className="text-sm font-medium text-red-600">{fileError}</p>
